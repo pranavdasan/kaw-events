@@ -1,15 +1,12 @@
-export interface Speaker {
+export interface Participant {
   id: string;
   name: string;
   role?: string;
-  company: string;
+  group?: string;
   avatarUrl?: string;
-  bio?: string;
-  linkedIn?: string;
-  twitter?: string;
 }
 
-export type Track = 'Keynote' | 'Engineering' | 'Design' | 'Workshop' | 'General';
+export type Track = 'Song' | 'Dance' | 'Committee' | 'Award' | 'General';
 
 export interface Session {
   id: string;
@@ -17,10 +14,10 @@ export interface Session {
   title: string;
   description: string;
   durationInMin: number;
-  day: number; // 1, 2, 3
+  day: number;
   track: Track;
   room: string;
-  speakers: Speaker[];
+  participants: Participant[];
   isLive: boolean;
   type?: 'session' | 'break';
   order: number;
@@ -30,9 +27,9 @@ export interface Event {
   id: string;
   name: string;
   description: string;
-  date: string; // ISO date
-  startTimeByDay: Record<number, string>; // Map of day number to HH:mm start time
-  endTimeByDay?: Record<number, string>; // Map of day number to HH:mm end time
+  date: string;
+  startTimeByDay: Record<number, string>;
+  endTimeByDay?: Record<number, string>;
   imageUrl: string;
   totalDays: number;
 }

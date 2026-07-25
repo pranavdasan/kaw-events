@@ -1,81 +1,100 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Save, Search, X, User } from 'lucide-react';
-import { Session, Speaker } from '../../types';
-import { createSlug } from '../../utils/imageUtils';
+import { ArrowLeft, Save, Search, X, User, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Session, Participant } from '../../types';
+import { createSlug, fileToBase64 } from '../../utils/imageUtils';
 
 interface AdminEditViewProps {
   session: Session;
-  allSpeakers: Speaker[];
+  allParticipants: Participant[];
   onBack: () => void;
   onSave: (session: Session) => void;
-  onCreateSpeaker: (speaker: Speaker) => void;
+  onCreateParticipant: (participant: Participant) => void;
 }
 
 /**
- * Detailed form view for editing a session's properties and speakers.
+ * Detailed form view for editing a session's properties and participants.
  */
 export const AdminEditView: React.FC<AdminEditViewProps> = ({ 
   session, 
-  allSpeakers, 
+  allParticipants, 
   onBack, 
   onSave, 
-  onCreateSpeaker 
+  onCreateParticipant 
 }) => {
   const [formData, setFormData] = useState(session);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showSpeakerSearch, setShowSpeakerSearch] = useState(false);
-  const [isCreatingSpeaker, setIsCreatingSpeaker] = useState(false);
-  const [newSpeaker, setNewSpeaker] = useState<Partial<Speaker>>({
+  const [showParticipantSearch, setShowParticipantSearch] = useState(false);
+  const [isCreatingParticipant, setIsCreatingParticipant] = useState(false);
+  const [newParticipant, setNewParticipant] = useState<Partial<Participant>>({
     name: '',
     role: '',
-    company: '',
+    group: '',
     avatarUrl: ''
   });
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  const filteredSpeakers = useMemo(() => {
+  const filteredParticipants = useMemo(() => {
     if (!searchTerm) return [];
-    return allSpeakers.filter(s => 
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
-      !formData.speakers.some(selected => selected.id === s.id)
+    return allParticipants.filter(p => 
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
+      !formData.participants.some(selected => selected.id === p.id)
     );
-  }, [allSpeakers, searchTerm, formData.speakers]);
+  }, [allParticipants, searchTerm, formData.participants]);
 
-  const addSpeaker = (speaker: Speaker) => {
+  const addParticipant = (participant: Participant) => {
     setFormData({
       ...formData,
-      speakers: [...formData.speakers, speaker]
+      participants: [...formData.participants, participant]
     });
     setSearchTerm('');
-    setShowSpeakerSearch(false);
+    setShowParticipantSearch(false);
   };
 
-  const handleCreateSpeaker = () => {
-    if (!newSpeaker.name) return;
+  const handleCreateParticipant = () => {
+    if (!newParticipant.name) return;
     
-    const createdSpeaker: Speaker = {
-      id: createSlug(newSpeaker.name),
-      name: newSpeaker.name,
-      role: newSpeaker.role || '',
-      company: newSpeaker.company || 'Independent',
-      avatarUrl: newSpeaker.avatarUrl || '',
+    const createdParticipant: Participant = {
+      id: createSlug(newParticipant.name),
+      name: newParticipant.name,
+      role: newParticipant.role || '',
+      group: newParticipant.group || '',
+      avatarUrl: newParticipant.avatarUrl || ''
     };
 
-    onCreateSpeaker(createdSpeaker);
+    onCreateParticipant(createdParticipant);
     setFormData({
       ...formData,
-      speakers: [...formData.speakers, createdSpeaker]
+      participants: [...formData.participants, createdParticipant]
     });
 
-    setNewSpeaker({ name: '', role: '', company: '', avatarUrl: '' });
-    setIsCreatingSpeaker(false);
-    setShowSpeakerSearch(false);
+    setNewParticipant({ name: '', role: '', group: '', avatarUrl: '' });
+    setAvatarPreview(null);
+    setIsCreatingParticipant(false);
+    setShowParticipantSearch(false);
   };
 
-  const removeSpeaker = (id: string) => {
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setAvatarUploading(true);
+      const base64 = await fileToBase64(file);
+      setAvatarPreview(base64);
+      setNewParticipant(prev => ({ ...prev, avatarUrl: base64 }));
+    } catch (err) {
+      console.error('Failed to convert image to base64:', err);
+      alert('Failed to read image file. Please try another image.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const removeParticipant = (id: string) => {
     setFormData({
       ...formData,
-      speakers: formData.speakers.filter(s => s.id !== id)
+      participants: formData.participants.filter(p => p.id !== id)
     });
   };
 
@@ -107,10 +126,10 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
                 onChange={(e) => setFormData({...formData, track: e.target.value as any})}
               >
                 <option value="General">General</option>
-                <option value="Keynote">Keynote</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Design">Design</option>
-                <option value="Workshop">Workshop</option>
+                <option value="Song">Song</option>
+                <option value="Dance">Dance</option>
+                <option value="Committee">Committee</option>
+                <option value="Award">Award</option>
               </select>
             </div>
           </div>
@@ -146,22 +165,22 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
 
         <section className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="font-headline-sm text-primary">Speakers</h2>
+            <h2 className="font-headline-sm text-primary">Participants</h2>
             <button 
-              onClick={() => setShowSpeakerSearch(!showSpeakerSearch)}
+              onClick={() => setShowParticipantSearch(!showParticipantSearch)}
               className="flex items-center gap-2 text-primary font-label-caps hover:underline"
             >
-              <Search className="w-4 h-4" /> Add Speaker
+              <Search className="w-4 h-4" /> Add Participant
             </button>
           </div>
 
           <AnimatePresence>
-            {showSpeakerSearch && (
+            {showParticipantSearch && (
               <div className="relative">
                 <div className="flex items-center gap-2 bg-surface-container rounded-xl p-2 border border-outline-variant">
                   <Search className="w-5 h-5 ml-2 text-on-surface-variant" />
                   <input 
-                    placeholder="Search existing speakers..." 
+                    placeholder="Search existing participants..." 
                     className="flex-1 bg-transparent border-none outline-none p-2"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
@@ -172,25 +191,31 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
                 <div className="flex justify-between items-center px-1 mt-2">
                   <p className="text-xs text-on-surface-variant font-label-caps">Can't find them?</p>
                   <button 
-                    onClick={() => setIsCreatingSpeaker(true)} 
+                    onClick={() => { setIsCreatingParticipant(true); setAvatarPreview(null); }} 
                     className="text-primary text-xs font-bold hover:underline"
                   >
-                    + Create New Speaker
+                    + Create New Participant
                   </button>
                 </div>
 
-                {filteredSpeakers.length > 0 && (
+                {filteredParticipants.length > 0 && (
                   <div className="absolute top-full left-0 w-full bg-surface-container-lowest border border-outline-variant rounded-xl shadow-xl z-20 mt-1 max-h-60 overflow-y-auto">
-                    {filteredSpeakers.map(s => (
+                    {filteredParticipants.map(p => (
                       <button 
-                        key={s.id} 
-                        onClick={() => addSpeaker(s)}
+                        key={p.id} 
+                        onClick={() => addParticipant(p)}
                         className="w-full flex items-center gap-3 p-3 hover:bg-surface-container-high transition-colors border-b border-outline-variant last:border-none"
                       >
-                        <img src={s.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}`} className="w-8 h-8 rounded-full border border-outline-variant object-cover" />
+                        <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center border border-outline-variant overflow-hidden shrink-0">
+                          {p.avatarUrl ? (
+                            <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User className="w-4 h-4 text-on-surface-variant" />
+                          )}
+                        </div>
                         <div className="text-left">
-                          <p className="font-body-md font-bold">{s.name}</p>
-                          <p className="text-xs text-on-surface-variant">{s.role} at {s.company}</p>
+                          <p className="font-body-md font-bold">{p.name}</p>
+                          <p className="text-xs text-on-surface-variant">{p.role} - {p.group}</p>
                         </div>
                       </button>
                     ))}
@@ -201,7 +226,7 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
           </AnimatePresence>
 
           <AnimatePresence>
-            {isCreatingSpeaker && (
+            {isCreatingParticipant && (
               <motion.div 
                 initial={{ opacity: 0, height: 0 }} 
                 animate={{ opacity: 1, height: 'auto' }}
@@ -209,38 +234,80 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
                 className="p-4 bg-primary-container/20 rounded-xl border border-primary/30 space-y-4 overflow-hidden"
               >
                 <div className="flex justify-between items-center">
-                  <h3 className="font-label-caps text-primary">New Speaker Info</h3>
-                  <button onClick={() => setIsCreatingSpeaker(false)}><X className="w-4 h-4" /></button>
+                  <h3 className="font-label-caps text-primary">New Participant Info</h3>
+                  <button onClick={() => { setIsCreatingParticipant(false); setAvatarPreview(null); }}><X className="w-4 h-4" /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <input 
                     placeholder="Full Name (Required)" 
                     className="bg-surface-container-low p-2 rounded border border-outline-variant text-sm" 
-                    value={newSpeaker.name}
-                    onChange={e => setNewSpeaker({...newSpeaker, name: e.target.value})}
+                    value={newParticipant.name}
+                    onChange={e => setNewParticipant({...newParticipant, name: e.target.value})}
                   />
                   <input 
                     placeholder="Role (Optional)" 
                     className="bg-surface-container-low p-2 rounded border border-outline-variant text-sm" 
-                    value={newSpeaker.role}
-                    onChange={e => setNewSpeaker({...newSpeaker, role: e.target.value})}
+                    value={newParticipant.role}
+                    onChange={e => setNewParticipant({...newParticipant, role: e.target.value})}
                   />
                   <input 
-                    placeholder="Company" 
+                    placeholder="Group/Organization" 
                     className="bg-surface-container-low p-2 rounded border border-outline-variant text-sm" 
-                    value={newSpeaker.company}
-                    onChange={e => setNewSpeaker({...newSpeaker, company: e.target.value})}
-                  />
-                  <input 
-                    placeholder="Avatar URL (Optional)" 
-                    className="bg-surface-container-low p-2 rounded border border-outline-variant text-sm" 
-                    value={newSpeaker.avatarUrl}
-                    onChange={e => setNewSpeaker({...newSpeaker, avatarUrl: e.target.value})}
+                    value={newParticipant.group}
+                    onChange={e => setNewParticipant({...newParticipant, group: e.target.value})}
                   />
                 </div>
+                
+                <div className="space-y-3">
+                  <label className="font-label-caps mb-2 block text-sm">Participant Photo (Optional)</label>
+                  <div className="relative w-full h-40 rounded-xl border border-outline-variant overflow-hidden bg-black/10 flex items-center justify-center">
+                    {avatarPreview ? (
+                      <img 
+                        src={avatarPreview} 
+                        alt="Participant Photo Preview" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="text-center text-on-surface-variant p-4">
+                        <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                        <span className="text-xs">No image selected</span>
+                      </div>
+                    )}
+                    {avatarUploading && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center text-white text-xs font-bold">
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        Processing Image...
+                      </div>
+                    )}
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleAvatarFileChange}
+                      className="hidden" 
+                      disabled={avatarUploading}
+                    />
+                    <div className="flex-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 py-2.5 px-4 rounded-xl font-label-caps text-xs flex items-center justify-center gap-2 transition-colors font-bold">
+                      <Upload className="w-4 h-4" /> Upload Photo
+                    </div>
+                    {avatarPreview && (
+                      <button 
+                        type="button"
+                        onClick={() => { setAvatarPreview(null); setNewParticipant(prev => ({ ...prev, avatarUrl: '' })); }}
+                        className="p-2 bg-error/10 text-error rounded-full hover:bg-error/20 transition-colors"
+                        aria-label="Remove photo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </label>
+                </div>
+                
                 <button 
-                  onClick={handleCreateSpeaker}
-                  disabled={!newSpeaker.name}
+                  onClick={handleCreateParticipant}
+                  disabled={!newParticipant.name}
                   className="w-full bg-primary text-on-primary py-2 rounded-lg font-label-caps disabled:opacity-50"
                 >
                   Confirm & Add
@@ -250,33 +317,33 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
           </AnimatePresence>
 
           <div className="space-y-4">
-             {formData.speakers.length > 0 ? formData.speakers.map(s => (
-               <div key={s.id} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg border border-outline-variant group">
-                 <div className="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shrink-0">
-                    {s.avatarUrl ? (
-                      <img src={s.avatarUrl} alt={s.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-full h-full p-2 text-on-surface-variant" />
-                    )}
-                 </div>
-                 <div className="flex-1">
-                   <p className="font-body-md font-bold">{s.name}</p>
-                   <p className="text-xs text-on-surface-variant line-clamp-1">
-                     {s.role ? `${s.role} • ` : ''}{s.company}
-                   </p>
-                 </div>
-                 <button 
-                   onClick={() => removeSpeaker(s.id)}
-                   className="p-2 opacity-0 group-hover:opacity-100 hover:bg-error/10 hover:text-error rounded-full transition-all"
-                 >
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
-             )) : (
-               <p className="text-on-surface-variant text-center py-8 bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
-                 No speakers assigned.
-               </p>
-             )}
+             {formData.participants.length > 0 ? formData.participants.map(p => (
+              <div key={p.id} className="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg border border-outline-variant group">
+                <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 overflow-hidden">
+                  {p.avatarUrl ? (
+                    <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <User className="w-5 h-5 text-on-surface-variant" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-body-md font-bold">{p.name}</p>
+                  <p className="text-xs text-on-surface-variant line-clamp-1">
+                    {p.role ? `${p.role} • ` : ''}{p.group}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => removeParticipant(p.id)}
+                  className="p-2 opacity-0 group-hover:opacity-100 hover:bg-error/10 hover:text-error rounded-full transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )) : (
+              <p className="text-on-surface-variant text-center py-8 bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
+                No participants assigned.
+              </p>
+            )}
           </div>
         </section>
 

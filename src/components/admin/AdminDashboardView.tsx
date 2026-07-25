@@ -108,6 +108,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   const liveSessionsCount = useMemo(() => adaptiveSessions.filter(s => s.isLive).length, [adaptiveSessions]);
 
+  const totalDuration = useMemo(() => 
+    sessions.filter(s => s.eventId === event?.id).reduce((sum, s) => sum + s.durationInMin, 0), 
+    [sessions, event?.id]
+  );
+
   return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }} className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -237,11 +242,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Event Sessions', value: filteredSessions.length, color: 'bg-surface-container-lowest' },
           { label: 'Live Now', value: liveSessionsCount, color: 'bg-error-container text-error', live: true },
-          { label: 'Total Events', value: events.length, color: 'bg-surface-container-lowest' },
+          { label: 'Total Duration', value: `${totalDuration} min`, color: 'bg-surface-container-lowest' },
         ].map((stat, idx) => (
           <div key={idx} className={cn("rounded-xl p-5 shadow-sm border border-outline-variant/20 flex flex-col relative overflow-hidden", stat.color)}>
             {stat.live && (
@@ -409,7 +414,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
                   <div className="flex-1 w-full">
                     <h3 className="font-headline-sm text-primary text-base font-bold leading-snug">{session.title}</h3>
-                    <p className="font-body-md text-on-surface-variant text-xs mt-0.5">{session.room} • {session.speakers[0]?.name || 'Staff'}</p>
+                    <p className="font-body-md text-on-surface-variant text-xs mt-0.5">{session.room} • {session.participants[0]?.name || 'Staff'}</p>
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30">

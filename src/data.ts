@@ -1,4 +1,4 @@
-import { Session, Speaker, Event } from './types';
+import { Session, Participant, Event } from './types';
 import { ONAM_POOKALAM_BASE64, VISHU_BASE64, PICNIC_BASE64, DRAMA_BASE64 } from './utils/imageUtils';
 
 // Dynamic start time generator so the first session is actively LIVE relative to user's current clock
@@ -13,57 +13,43 @@ const getDynamicStartTime = () => {
 
 const liveNowStartTime = getDynamicStartTime();
 
-export const SPEAKERS: Speaker[] = [
+export const PARTICIPANTS: Participant[] = [
   {
     id: 'radhika-nair',
     name: 'Radhika Nair',
     role: 'Cultural Director',
-    company: 'Kerala Association of Washington',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
-    bio: 'Radhika has served as Cultural Director of KAW for over 5 years, preserving traditional Malayali performing arts across the Pacific Northwest.',
-    linkedIn: '#',
-    twitter: '#'
+    group: 'Kerala Association of Washington',
   },
   {
     id: 'anil-kumar',
     name: 'Anil Kumar',
     role: 'Master Chenda Artist',
-    company: 'Seattle Layatharangam Melam',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=400',
-    bio: 'Renowned percussionist trained in Kerala temple percussion styles, leading classical Chenda Melam ensembles in Washington State.'
+    group: 'Seattle Layatharangam Melam',
   },
   {
     id: 'sreejith-varma',
     name: 'Chef Sreejith Varma',
     role: 'Culinary Lead',
-    company: 'KAW Sadhya Team',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400',
-    bio: 'Expert in traditional Kerala cuisine, managing the authentic 26-item Onam Sadhya banquet for over 1,000 community attendees.'
+    group: 'KAW Sadhya Team',
   },
   {
     id: 'meera-menon',
     name: 'Meera Menon',
     role: 'Choreographer & Lead',
-    company: 'Mohiniyattam Academy Seattle',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
-    bio: 'Accomplished classical dancer specializing in Mohiniyattam and Thiruvathirakali group compositions.'
+    group: 'Mohiniyattam Academy Seattle',
   },
   {
     id: 'vinod-pillai',
     name: 'Vinod Pillai',
     role: 'Board President',
-    company: 'Kerala Association of Washington',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=400',
-    bio: 'President of KAW guiding civic initiatives, youth development programs, and charitable community outreach in Washington.'
+    group: 'Kerala Association of Washington',
   },
   {
     id: 'pooja-jayaram',
     name: 'Pooja Jayaram',
     role: 'Youth Wing Chair',
-    company: 'KAW Youth Forum',
-    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=400',
-    bio: 'Organizes youth musical bands, fusion dance productions, and social causes for young Malayalis across the region.'
-  }
+    group: 'KAW Youth Forum',
+  },
 ];
 
 export const EVENTS: Event[] = [
@@ -75,7 +61,7 @@ export const EVENTS: Event[] = [
     startTimeByDay: { 1: liveNowStartTime, 2: '10:00' },
     endTimeByDay: { 1: '18:00', 2: '17:00' },
     imageUrl: ONAM_POOKALAM_BASE64,
-    totalDays: 2
+    totalDays: 1
   },
   {
     id: 'vishu-kerala-new-year-fest-2026',
@@ -117,9 +103,9 @@ export const SESSIONS: Session[] = [
     description: 'Formal inauguration of KAW Grand Onam Celebration with traditional Nilavilakku lamp lighting, prayer song, and presidential welcome address.',
     durationInMin: 45,
     day: 1,
-    track: 'Keynote',
+    track: 'General',
     room: 'Main Stage',
-    speakers: [SPEAKERS[4], SPEAKERS[0]],
+    participants: [PARTICIPANTS[4], PARTICIPANTS[0]],
     isLive: true,
     order: 0
   },
@@ -132,7 +118,7 @@ export const SESSIONS: Session[] = [
     day: 1,
     track: 'General',
     room: 'Courtyard & Main Stage',
-    speakers: [SPEAKERS[1]],
+    participants: [PARTICIPANTS[1]],
     isLive: false,
     order: 1
   },
@@ -143,9 +129,9 @@ export const SESSIONS: Session[] = [
     description: 'Live floral carpet competition featuring colorful fresh petal patterns created by neighborhood teams celebrating Kerala artistry.',
     durationInMin: 45,
     day: 1,
-    track: 'Workshop',
+    track: 'General',
     room: 'Community Hall A',
-    speakers: [SPEAKERS[0]],
+    participants: [PARTICIPANTS[0]],
     isLive: false,
     order: 1
   },
@@ -156,9 +142,9 @@ export const SESSIONS: Session[] = [
     description: 'Graceful Thiruvathirakali circle dance around the illuminated lamp followed by Mohiniyattam solo dance showcase.',
     durationInMin: 45,
     day: 1,
-    track: 'Design',
+    track: 'Dance',
     room: 'Main Stage',
-    speakers: [SPEAKERS[3]],
+    participants: [PARTICIPANTS[3]],
     isLive: false,
     order: 2
   },
@@ -171,7 +157,7 @@ export const SESSIONS: Session[] = [
     day: 1,
     track: 'General',
     room: 'Dining Pavilion',
-    speakers: [],
+    participants: [],
     isLive: false,
     type: 'break',
     order: 3
@@ -185,7 +171,7 @@ export const SESSIONS: Session[] = [
     day: 1,
     track: 'General',
     room: 'Dining Pavilion',
-    speakers: [SPEAKERS[2]],
+    participants: [PARTICIPANTS[2]],
     isLive: false,
     order: 4
   },
@@ -196,9 +182,9 @@ export const SESSIONS: Session[] = [
     description: 'High-energy cinematic dances, comedy drama skits, and Malayalam rock fusion band performances by the KAW Youth Wing.',
     durationInMin: 60,
     day: 1,
-    track: 'Engineering',
+    track: 'Song',
     room: 'Main Stage',
-    speakers: [SPEAKERS[5]],
+    participants: [PARTICIPANTS[5]],
     isLive: false,
     order: 5
   },
@@ -211,9 +197,8 @@ export const SESSIONS: Session[] = [
     day: 1,
     track: 'General',
     room: 'Outdoor Grounds',
-    speakers: [SPEAKERS[4]],
+    participants: [PARTICIPANTS[4]],
     isLive: false,
     order: 6
   }
 ];
-

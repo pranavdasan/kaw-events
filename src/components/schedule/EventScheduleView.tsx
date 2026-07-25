@@ -33,15 +33,10 @@ export const EventScheduleView: React.FC<EventScheduleViewProps> = ({
   onShareSession,
   onSessionClick 
 }) => {
-  const [activeDay, setActiveDay] = useState(1);
   const [activeTrack, setActiveTrack] = useState<Track | 'All'>('All');
 
-  const filteredSessions = useMemo(() => {
-    return sessions.filter(s => s.day === activeDay);
-  }, [sessions, activeDay]);
-
-  const dayStartTime = event.startTimeByDay[activeDay] || event.startTimeByDay[1] || '09:00';
-  const adaptiveSessions = useAdaptiveSchedule(filteredSessions, dayStartTime, isAutoLiveMode);
+  const dayStartTime = event.startTimeByDay[1] || '09:00';
+  const adaptiveSessions = useAdaptiveSchedule(sessions, dayStartTime, isAutoLiveMode);
 
   const finalSessions = useMemo(() => {
     return adaptiveSessions.filter(s => activeTrack === 'All' || s.track === activeTrack);
@@ -177,26 +172,26 @@ export const EventScheduleView: React.FC<EventScheduleViewProps> = ({
             )}
           </div>
 
-          {/* Speakers footer */}
+          {/* Participants footer */}
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center gap-2.5">
               <div className="flex -space-x-2.5 overflow-hidden">
-                {session.speakers.map(s => (
-                  <img 
-                    key={s.id} 
-                    src={s.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`} 
-                    alt={s.name} 
-                    className="w-8 h-8 rounded-full border-2 border-surface-container-lowest object-cover shrink-0 shadow-xs" 
-                  />
+                {session.participants.slice(0, 3).map(p => (
+                  <div 
+                    key={p.id} 
+                    className="w-8 h-8 rounded-full border-2 border-surface-container-lowest bg-primary/10 shrink-0 shadow-xs flex items-center justify-center"
+                  >
+                    <span className="text-xs font-bold text-primary">{p.name.charAt(0)}</span>
+                  </div>
                 ))}
               </div>
               <div className="truncate max-w-[180px]">
                 <p className="text-xs font-bold text-on-surface truncate m-0">
-                  {session.speakers.length > 1 ? 'Panel Discussion' : session.speakers[0]?.name || 'Staff'}
+                  {session.participants.length > 1 ? 'Participants' : session.participants[0]?.name || 'Participant'}
                 </p>
-                {session.speakers.length === 1 && session.speakers[0].company && (
+                {session.participants.length === 1 && session.participants[0].group && (
                   <p className="text-[11px] text-on-surface-variant truncate m-0">
-                    {session.speakers[0].company}
+                    {session.participants[0].group}
                   </p>
                 )}
               </div>
@@ -215,35 +210,9 @@ export const EventScheduleView: React.FC<EventScheduleViewProps> = ({
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
       {/* Sticky Header Filters on Mobile for smooth scrolling */}
       <div className="sticky top-16 md:top-0 z-30 bg-background/95 backdrop-blur-md pt-2 pb-3 -mx-4 px-4 border-b border-outline-variant/30 space-y-3">
-        {/* Day Selector */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
-          {Array.from({ length: event.totalDays || 1 }, (_, i) => i + 1).map((day) => {
-            const isActive = activeDay === day;
-            return (
-              <button
-                key={day}
-                onClick={() => setActiveDay(day)}
-                className={cn(
-                  "relative px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer",
-                  isActive ? "text-on-primary shadow-sm" : "bg-surface-container-high text-on-surface-variant hover:bg-surface-variant"
-                )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeDayPill"
-                    className="absolute inset-0 bg-primary rounded-full -z-10"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-                Day {day}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Track Filters */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
-          {['All', 'Keynote', 'Engineering', 'Design', 'Workshop'].map((track) => {
+          {['All', 'Song', 'Dance', 'Committee', 'Award', 'General'].map((track) => {
             const isActive = activeTrack === track;
             return (
               <button

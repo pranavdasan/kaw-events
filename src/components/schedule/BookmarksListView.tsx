@@ -240,11 +240,11 @@ export const BookmarksListView: React.FC<BookmarksListViewProps> = ({
                     <div className="flex items-center gap-2">
                       <MapPin className="w-3.5 h-3.5 text-primary" />
                       <span className="text-on-surface font-bold">{session.room}</span>
-                      {session.speakers.length > 0 && (
+                      {session.participants.length > 0 && (
                         <>
                           <span>•</span>
                           <span className="truncate max-w-[140px] text-on-surface-variant">
-                            {session.speakers[0].name}
+                            {session.participants[0].name}
                           </span>
                         </>
                       )}

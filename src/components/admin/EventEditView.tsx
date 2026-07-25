@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Save, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 import { Event } from '../../types';
-import { fileToBase64, createSlug, ONAM_POOKALAM_BASE64, VISHU_BASE64, PICNIC_BASE64, DRAMA_BASE64 } from '../../utils/imageUtils';
+import { fileToBase64, createSlug, ONAM_POOKALAM_BASE64 } from '../../utils/imageUtils';
 
 interface EventEditViewProps {
   event: Event | null;
@@ -117,68 +117,11 @@ export const EventEditView: React.FC<EventEditViewProps> = ({
                     />
                   </label>
                 </div>
-
-                {/* Preset Base64 Art Quick Selector */}
-                <div>
-                  <span className="text-[11px] font-bold text-on-surface-variant block mb-1.5 uppercase tracking-wider">
-                    Or select KAW Preset Artwork:
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button 
-                      type="button"
-                      onClick={() => setFormData({ ...formData, imageUrl: ONAM_POOKALAM_BASE64 })}
-                      className="text-[11px] font-bold p-2 rounded-lg bg-surface-container-high hover:bg-primary/10 hover:text-primary transition-all text-center border border-outline-variant/50"
-                    >
-                      Athapookalam
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setFormData({ ...formData, imageUrl: VISHU_BASE64 })}
-                      className="text-[11px] font-bold p-2 rounded-lg bg-surface-container-high hover:bg-primary/10 hover:text-primary transition-all text-center border border-outline-variant/50"
-                    >
-                      Vishukkani
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setFormData({ ...formData, imageUrl: PICNIC_BASE64 })}
-                      className="text-[11px] font-bold p-2 rounded-lg bg-surface-container-high hover:bg-primary/10 hover:text-primary transition-all text-center border border-outline-variant/50"
-                    >
-                      Sports Picnic
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setFormData({ ...formData, imageUrl: DRAMA_BASE64 })}
-                      className="text-[11px] font-bold p-2 rounded-lg bg-surface-container-high hover:bg-primary/10 hover:text-primary transition-all text-center border border-outline-variant/50"
-                    >
-                      Youth Drama
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="font-label-caps mb-2 block font-bold">Total Days</label>
-              <input 
-                type="number"
-                min="1"
-                max="7"
-                className="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg p-3 focus:border-primary outline-none" 
-                value={formData.totalDays} 
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 1;
-                  const newStartTimes = { ...formData.startTimeByDay };
-                  const newEndTimes = { ...formData.endTimeByDay };
-                  for (let i = 1; i <= val; i++) {
-                    if (!newStartTimes[i]) newStartTimes[i] = '09:00';
-                    if (!newEndTimes[i]) newEndTimes[i] = '17:00';
-                  }
-                  setFormData({...formData, totalDays: val, startTimeByDay: newStartTimes, endTimeByDay: newEndTimes});
-                }}
-              />
-            </div>
             <div>
               <label className="font-label-caps mb-2 block font-bold">Event Start Date</label>
               <input 
@@ -202,39 +145,36 @@ export const EventEditView: React.FC<EventEditViewProps> = ({
             </div>
              
             <div className="pt-4 border-t border-outline-variant">
-              <h3 className="font-label-caps mb-4 font-bold">Start & End Times by Day</h3>
+              <h3 className="font-label-caps mb-4 font-bold">Start & End Times</h3>
               <div className="space-y-4">
-                {Array.from({ length: formData.totalDays }, (_, i) => i + 1).map(day => (
-                  <div key={day} className="space-y-2">
-                     <p className="font-body-md font-bold">Day {day}</p>
-                     <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <label className="block text-[10px] text-on-surface-variant mb-1 font-bold">START</label>
-                        <input 
-                          type="time"
-                          className="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg p-2 focus:border-primary outline-none text-sm" 
-                          value={formData.startTimeByDay[day] || '09:00'} 
-                          onChange={(e) => {
-                            const newTimes = { ...formData.startTimeByDay, [day]: e.target.value };
-                            setFormData({ ...formData, startTimeByDay: newTimes });
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-[10px] text-on-surface-variant mb-1 font-bold">END</label>
-                        <input 
-                          type="time"
-                          className="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg p-2 focus:border-primary outline-none text-sm" 
-                          value={formData.endTimeByDay?.[day] || '17:00'} 
-                          onChange={(e) => {
-                            const newTimes = { ...formData.endTimeByDay, [day]: e.target.value };
-                            setFormData({ ...formData, endTimeByDay: newTimes });
-                          }}
-                        />
-                      </div>
+                <div key={1} className="space-y-2">
+                   <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-on-surface-variant mb-1 font-bold">START</label>
+                      <input 
+                        type="time"
+                        className="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg p-2 focus:border-primary outline-none text-sm" 
+                        value={formData.startTimeByDay[1] || '09:00'} 
+                        onChange={(e) => {
+                          const newTimes = { ...formData.startTimeByDay, 1: e.target.value };
+                          setFormData({ ...formData, startTimeByDay: newTimes });
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-on-surface-variant mb-1 font-bold">END</label>
+                      <input 
+                        type="time"
+                        className="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg p-2 focus:border-primary outline-none text-sm" 
+                        value={formData.endTimeByDay?.[1] || '17:00'} 
+                        onChange={(e) => {
+                          const newTimes = { ...formData.endTimeByDay, 1: e.target.value };
+                          setFormData({ ...formData, endTimeByDay: newTimes });
+                        }}
+                      />
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
           </div>

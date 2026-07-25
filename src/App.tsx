@@ -5,10 +5,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Session, Event, Speaker } from './types';
-import { SESSIONS as INITIAL_SESSIONS, EVENTS as INITIAL_EVENTS, SPEAKERS as INITIAL_SPEAKERS } from './data';
+import { Session, Event, Participant } from './types';
+import { SESSIONS as INITIAL_SESSIONS, EVENTS as INITIAL_EVENTS, PARTICIPANTS as INITIAL_PARTICIPANTS } from './data';
 import { useAdaptiveSchedule } from './hooks/useAdaptiveSchedule';
 import { ONAM_POOKALAM_BASE64, createSlug } from './utils/imageUtils';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from '../firebase';
 
 // Import Components
 import { Layout } from './components/common/Layout';
@@ -23,9 +27,13 @@ import { AdminDashboardView } from './components/admin/AdminDashboardView';
 import { AdminEditView } from './components/admin/AdminEditView';
 import { EventEditView } from './components/admin/EventEditView';
 
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 /**
  * Main Application Component
- * Manages global state using local React state (no Firebase).
+ * Manages global state using local React state with Firebase Auth for admin.
  * Data persists in localStorage for bookmarks only.
  */
 export default function App() {
@@ -33,7 +41,22 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'events' | 'schedule' | 'bookmarks' | 'admin-dashboard' | 'session-details' | 'admin-edit' | 'admin-event-edit' | 'admin-login'>('events');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const allowedUids = import.meta.env.VITE_ADMIN_UIDS?.split(',').map((u: string) => u.trim()) || [];
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAuthUser(user);
+      const isAllowed = user && (allowedUids.length === 0 || allowedUids.includes(user.uid));
+      setIsAdmin(!!isAllowed);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Initialize from localStorage if available, otherwise use initial data
   const [events, setEvents] = useState<Event[]>(() => {
     try {
@@ -53,18 +76,18 @@ export default function App() {
     }
   });
   
-  const [speakers, setSpeakers] = useState<Speaker[]>(() => {
+  const [performers, setPerformers] = useState<Participant[]>(() => {
     try {
-      const stored = localStorage.getItem('kaw-speakers');
-      return stored ? JSON.parse(stored) : INITIAL_SPEAKERS;
+      const stored = localStorage.getItem('kaw-participants');
+      return stored ? JSON.parse(stored) : INITIAL_PARTICIPANTS;
     } catch {
-      return INITIAL_SPEAKERS;
+      return INITIAL_PARTICIPANTS;
     }
   });
   
   const [isAutoLiveMode, setIsAutoLiveMode] = useState<boolean>(true);
 
-  // Persist events, sessions, speakers to localStorage
+  // Persist events, sessions, performers to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('kaw-events', JSON.stringify(events));
@@ -83,11 +106,11 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('kaw-speakers', JSON.stringify(speakers));
+      localStorage.setItem('kaw-participants', JSON.stringify(performers));
     } catch (err) {
-      console.error('Failed to save speakers', err);
+      console.error('Failed to save participants', err);
     }
-  }, [speakers]);
+  }, [performers]);
 
   // --- Bookmarks & Share State ---
   const [bookmarkedSessionIds, setBookmarkedSessionIds] = useState<string[]>(() => {
@@ -212,7 +235,7 @@ export default function App() {
       day,
       track: 'General',
       room: 'Main Hall',
-      speakers: [],
+      participants: [],
       isLive: false,
       type: 'break',
       order: maxOrder + 1
@@ -270,6 +293,14 @@ export default function App() {
     }
   }, [currentView, currentEvent]);
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Layout 
@@ -284,7 +315,11 @@ export default function App() {
         title={currentTitle}
         isAdmin={isAdmin}
         bookmarkedCount={bookmarkedSessionIds.length}
-        onLogout={() => { setIsAdmin(false); setCurrentView('events'); }}
+        onLogout={async () => { 
+          await signOut(auth);
+          setIsAdmin(false); 
+          setCurrentView('events'); 
+        }}
         events={events}
         selectedAdminEventId={selectedEventId || events[0]?.id}
         onSelectAdminEvent={(eventId) => {
@@ -299,7 +334,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {currentView === 'admin-login' && (
             <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <AdminLoginView onLogin={() => { setIsAdmin(true); setCurrentView('admin-dashboard'); }} />
+              <AdminLoginView onLogin={(user) => { setIsAdmin(true); setCurrentView('admin-dashboard'); }} />
             </motion.div>
           )}
           
@@ -375,10 +410,10 @@ export default function App() {
             <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <AdminEditView 
                 session={currentSession} 
-                allSpeakers={speakers}
+                allParticipants={performers}
                 onBack={() => setCurrentView('admin-dashboard')} 
                 onSave={handleSaveSession}
-                onCreateSpeaker={(s) => setSpeakers(prev => [...prev, s])}
+                onCreateParticipant={(p) => setPerformers(prev => [...prev, p])}
               />
             </motion.div>
           )}

@@ -128,29 +128,25 @@ export const SessionDetailView: React.FC<SessionDetailViewProps> = ({
           </p>
         </section>
 
-        {/* Speakers Section */}
+        {/* Participants Section */}
         <section className="space-y-4">
           <h3 className="font-headline-md text-primary text-lg font-bold">
-            {session.speakers.length > 1 ? 'Featured Speakers' : 'Speaker'}
+            {session.participants.length > 1 ? 'Featured Participants' : 'Participant'}
           </h3>
 
           <div className="grid grid-cols-1 gap-4">
-            {session.speakers.map(speaker => (
+            {session.participants.map(participant => (
               <div 
-                key={speaker.id} 
+                key={participant.id} 
                 className="bg-surface-container-lowest rounded-3xl p-5 shadow-xs border border-outline-variant/40 flex flex-col md:flex-row items-center gap-5 text-center md:text-left"
               >
-                <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 ring-4 ring-primary/10 bg-surface-container flex items-center justify-center shadow-sm">
-                  {speaker.avatarUrl ? (
-                    <img src={speaker.avatarUrl} alt={speaker.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-10 h-10 text-on-surface-variant" />
-                  )}
+                <div className="w-20 h-20 rounded-full shrink-0 ring-4 ring-primary/10 bg-primary/10 flex items-center justify-center shadow-sm">
+                  <span className="text-2xl font-bold text-primary">{participant.name.charAt(0)}</span>
                 </div>
                 <div className="flex-1 space-y-1">
-                  <h4 className="font-headline-sm text-primary text-base md:text-lg font-bold">{speaker.name}</h4>
+                  <h4 className="font-headline-sm text-primary text-base md:text-lg font-bold">{participant.name}</h4>
                   <p className="text-xs md:text-sm font-medium text-secondary">
-                    {speaker.role ? `${speaker.role}, ` : ''}<span className="text-primary font-semibold">{speaker.company}</span>
+                    {participant.role ? `${participant.role}, ` : ''}<span className="text-primary font-semibold">{participant.group}</span>
                   </p>
                 </div>
               </div>
