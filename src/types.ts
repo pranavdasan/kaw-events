@@ -14,7 +14,6 @@ export interface Session {
   title: string;
   description: string;
   durationInMin: number;
-  day: number;
   track: Track;
   room: string;
   participants: Participant[];
@@ -28,8 +27,7 @@ export interface Event {
   name: string;
   description: string;
   date: string;
-  startTimeByDay: Record<number, string>;
-  endTimeByDay?: Record<number, string>;
+  startTime: string;
+  endTime: string;
   imageUrl: string;
-  totalDays: number;
 }

@@ -34,8 +34,8 @@ export const EventHeader: React.FC<EventHeaderProps> = ({ event, onBack }) => {
           <div className="flex items-center gap-2 font-body-lg">
             <Clock className="w-5 h-5" />
             <span>
-              Day 1: {formatTimeTo12h(event.startTimeByDay[1])} 
-              {event.endTimeByDay?.[1] ? ` - ${formatTimeTo12h(event.endTimeByDay[1])}` : ''}
+              {formatTimeTo12h(event.startTime)} 
+              {event.endTime ? ` - ${formatTimeTo12h(event.endTime)}` : ''}
             </span>
           </div>
         </div>

@@ -13,6 +13,7 @@ interface EventEditViewProps {
 
 /**
  * View for creating or editing an event's metadata with direct base64 image storage in Database.
+ * Single-day events only.
  */
 export const EventEditView: React.FC<EventEditViewProps> = ({ 
   event, 
@@ -25,10 +26,9 @@ export const EventEditView: React.FC<EventEditViewProps> = ({
     name: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
-    startTimeByDay: { 1: '09:00' },
-    endTimeByDay: { 1: '17:00' },
+    startTime: '09:00',
+    endTime: '17:00',
     imageUrl: ONAM_POOKALAM_BASE64,
-    totalDays: 1
   });
 
   const [uploading, setUploading] = useState(false);
@@ -143,7 +143,7 @@ export const EventEditView: React.FC<EventEditViewProps> = ({
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
               />
             </div>
-             
+              
             <div className="pt-4 border-t border-outline-variant">
               <h3 className="font-label-caps mb-4 font-bold">Start & End Times</h3>
               <div className="space-y-4">
@@ -154,10 +154,9 @@ export const EventEditView: React.FC<EventEditViewProps> = ({
                       <input 
                         type="time"
                         className="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg p-2 focus:border-primary outline-none text-sm" 
-                        value={formData.startTimeByDay[1] || '09:00'} 
+                        value={formData.startTime || '09:00'} 
                         onChange={(e) => {
-                          const newTimes = { ...formData.startTimeByDay, 1: e.target.value };
-                          setFormData({ ...formData, startTimeByDay: newTimes });
+                          setFormData({ ...formData, startTime: e.target.value });
                         }}
                       />
                     </div>
@@ -166,10 +165,9 @@ export const EventEditView: React.FC<EventEditViewProps> = ({
                       <input 
                         type="time"
                         className="w-full bg-surface-container-low border-2 border-outline-variant rounded-lg p-2 focus:border-primary outline-none text-sm" 
-                        value={formData.endTimeByDay?.[1] || '17:00'} 
+                        value={formData.endTime || '17:00'} 
                         onChange={(e) => {
-                          const newTimes = { ...formData.endTimeByDay, 1: e.target.value };
-                          setFormData({ ...formData, endTimeByDay: newTimes });
+                          setFormData({ ...formData, endTime: e.target.value });
                         }}
                       />
                     </div>

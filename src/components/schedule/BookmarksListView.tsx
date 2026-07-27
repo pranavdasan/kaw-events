@@ -83,15 +83,14 @@ export const BookmarksListView: React.FC<BookmarksListViewProps> = ({
     const map = new Map<string, AdaptiveBookmarkedSession>();
 
     events.forEach(event => {
-      for (let day = 1; day <= event.totalDays; day++) {
-        const dayStartTime = event.startTimeByDay[day] || '09:00';
-        const daySessions = sessions.filter(s => s.eventId === event.id && s.day === day);
-        const adaptiveDaySessions = calculateAdaptiveTimesForDay(daySessions, dayStartTime);
-        
-        adaptiveDaySessions.forEach(as => {
-          map.set(as.id, as);
-        });
-      }
+      // Single day events only
+      const dayStartTime = event.startTime || '09:00';
+      const daySessions = sessions.filter(s => s.eventId === event.id);
+      const adaptiveDaySessions = calculateAdaptiveTimesForDay(daySessions, dayStartTime);
+      
+      adaptiveDaySessions.forEach(as => {
+        map.set(as.id, as);
+      });
     });
 
     return map;
@@ -197,7 +196,7 @@ export const BookmarksListView: React.FC<BookmarksListViewProps> = ({
                     <div className="flex items-center justify-between gap-2">
                       <span className="bg-secondary-fixed text-on-secondary-fixed font-bold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
                         <Layers className="w-3 h-3" />
-                        Day {session.day} • {session.track} Track
+                        {session.track} Track
                       </span>
 
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>

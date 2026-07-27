@@ -35,7 +35,7 @@ export const EventScheduleView: React.FC<EventScheduleViewProps> = ({
 }) => {
   const [activeTrack, setActiveTrack] = useState<Track | 'All'>('All');
 
-  const dayStartTime = event.startTimeByDay[1] || '09:00';
+  const dayStartTime = event.startTime || '09:00';
   const adaptiveSessions = useAdaptiveSchedule(sessions, dayStartTime, isAutoLiveMode);
 
   const finalSessions = useMemo(() => {

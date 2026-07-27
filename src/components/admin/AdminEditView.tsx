@@ -104,7 +104,7 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
         <button onClick={onBack} className="p-2 hover:bg-surface-container-high rounded-full transition-colors">
           <ArrowLeft className="w-6 h-6" />
         </button>
-        <h1 className="font-headline-lg text-primary">Edit Program Item</h1>
+        <h1 className="font-headline-lg text-primary">{session.id.startsWith('s-') ? 'Add Program Item' : 'Edit Program Item'}</h1>
       </div>
 
       <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm border border-outline-variant space-y-8">
@@ -349,9 +349,15 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
 
         <button 
           onClick={() => {
-            const finalId = session.id.startsWith('s-') || session.id.startsWith('new-') 
-              ? createSlug(`${formData.eventId}-${formData.title}`)
-              : formData.id;
+            if (!formData.title.trim()) {
+              alert('Please enter a title for the session');
+              return;
+            }
+            // Keep the original ID for updates, only generate slug for truly new sessions
+            const finalId = session.id.startsWith('s-') 
+              ? session.id 
+              : createSlug(`${formData.eventId}-${formData.title}`);
+            console.log('Saving session:', { ...formData, id: finalId });
             onSave({ ...formData, id: finalId });
           }}
           className="w-full bg-primary text-on-primary py-4 rounded-full font-headline-sm shadow-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer font-bold"

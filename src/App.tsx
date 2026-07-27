@@ -87,6 +87,72 @@ export default function App() {
   
   const [isAutoLiveMode, setIsAutoLiveMode] = useState<boolean>(true);
 
+  // Track pending changes for "Update Event" feature
+  const [pendingEvents, setPendingEvents] = useState<Map<string, Event>>(new Map());
+  const [pendingSessions, setPendingSessions] = useState<Map<string, Session>>(new Map());
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
+
+  // Store original state for revert functionality - initialized from initial data
+  const [originalEvents, setOriginalEvents] = useState<Event[] | null>(INITIAL_EVENTS);
+  const [originalSessions, setOriginalSessions] = useState<Session[] | null>(INITIAL_SESSIONS);
+
+  const markEventPending = (event: Event) => {
+    // Store original state on first pending change
+    if (pendingEvents.size === 0 && pendingSessions.size === 0) {
+      setOriginalEvents(events);
+      setOriginalSessions(sessions);
+    }
+    setPendingEvents(prev => new Map(prev).set(event.id, event));
+    setHasPendingChanges(true);
+  };
+
+  const markSessionPending = (session: Session) => {
+    // Store original state on first pending change
+    if (pendingEvents.size === 0 && pendingSessions.size === 0) {
+      setOriginalEvents(events);
+      setOriginalSessions(sessions);
+    }
+    setPendingSessions(prev => new Map(prev).set(session.id, session));
+    setHasPendingChanges(true);
+  };
+
+  const clearPendingChanges = () => {
+    // Restore original state
+    if (originalEvents) setEvents(originalEvents);
+    if (originalSessions) setSessions(originalSessions);
+    setPendingEvents(new Map());
+    setPendingSessions(new Map());
+    setHasPendingChanges(false);
+    setOriginalEvents(null);
+    setOriginalSessions(null);
+  };
+
+  const publishPendingChanges = () => {
+    if (pendingEvents.size > 0) {
+      setEvents(prev => {
+        const updated = [...prev];
+        pendingEvents.forEach(event => {
+          const idx = updated.findIndex(e => e.id === event.id);
+          if (idx >= 0) updated[idx] = event;
+          else updated.push(event);
+        });
+        return updated;
+      });
+    }
+    if (pendingSessions.size > 0) {
+      setSessions(prev => {
+        const updated = [...prev];
+        pendingSessions.forEach(session => {
+          const idx = updated.findIndex(s => s.id === session.id);
+          if (idx >= 0) updated[idx] = session;
+          else updated.push(session);
+        });
+        return updated;
+      });
+    }
+    clearPendingChanges();
+  };
+
   // Persist events, sessions, performers to localStorage
   useEffect(() => {
     try {
@@ -169,6 +235,25 @@ export default function App() {
     setCurrentView('admin-edit');
   };
 
+  const navigateToAddSession = (eventId: string) => {
+    const newSession: Session = {
+      id: `s-${Date.now()}`,
+      eventId,
+      title: '',
+      description: '',
+      durationInMin: 15,
+      track: 'General',
+      room: 'Main Hall',
+      participants: [],
+      isLive: false,
+      type: 'session',
+      order: 0
+    };
+    setSessions(prev => [...prev, newSession]);
+    setSelectedSessionId(newSession.id);
+    setCurrentView('admin-edit');
+  };
+
   const navigateToEditEvent = (id: string) => {
     setSelectedEventId(id);
     setCurrentView('admin-event-edit');
@@ -195,12 +280,15 @@ export default function App() {
   };
 
   const handleSaveSession = (updatedSession: Session) => {
+    console.log('handleSaveSession received:', updatedSession);
     setSessions(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s));
+    markSessionPending(updatedSession);
     setCurrentView('admin-dashboard');
   };
 
   const handleSaveEvent = (updatedEvent: Event) => {
     setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+    markEventPending(updatedEvent);
     setCurrentView('admin-dashboard');
   };
 
@@ -208,6 +296,10 @@ export default function App() {
     setEvents(prev => prev.filter(e => e.id !== eventId));
     setSessions(prev => prev.filter(s => s.eventId !== eventId));
     setCurrentView('admin-dashboard');
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
   };
 
   const handleReorderSessions = (reordered: Session[]) => {
@@ -220,10 +312,10 @@ export default function App() {
   /**
    * Fast way to add intermissions or breaks without full form entry.
    */
-  const handleQuickAddSession = (title: string, duration: number, day: number) => {
+  const handleQuickAddSession = (title: string, duration: number) => {
     if (!selectedEventId) return;
     
-    const eventDaySessions = sessions.filter(s => s.eventId === selectedEventId && s.day === day);
+    const eventDaySessions = sessions.filter(s => s.eventId === selectedEventId);
     const maxOrder = eventDaySessions.reduce((max, s) => Math.max(max, s.order ?? 0), -1);
 
     const newSession: Session = {
@@ -232,7 +324,6 @@ export default function App() {
       title,
       description: 'Quick added program item.',
       durationInMin: duration,
-      day,
       track: 'General',
       room: 'Main Hall',
       participants: [],
@@ -242,6 +333,7 @@ export default function App() {
     };
 
     setSessions(prev => [...prev, newSession]);
+    markSessionPending(newSession);
   };
 
   const addEvent = () => {
@@ -251,10 +343,9 @@ export default function App() {
       name: defaultName,
       description: 'A newly created event for KAW Events.',
       date: new Date().toISOString().split('T')[0],
-      startTimeByDay: { 1: '09:00' },
-      endTimeByDay: { 1: '17:00' },
+      startTime: '09:00',
+      endTime: '17:00',
       imageUrl: ONAM_POOKALAM_BASE64,
-      totalDays: 1
     };
     setEvents(prev => [...prev, newEvent]);
     setSelectedEventId(newEvent.id);
@@ -266,13 +357,13 @@ export default function App() {
   const currentEvent = useMemo(() => events.find(e => e.id === selectedEventId), [events, selectedEventId]);
   const currentSession = useMemo(() => sessions.find(s => s.id === selectedSessionId), [sessions, selectedSessionId]);
   
-  // Calculate adaptive timing for session detail view (requires full list of that day's sessions)
+  // Calculate adaptive timing for session detail view (requires full list of that event's sessions)
   const eventDaySessions = useMemo(() => {
     if (!currentEvent || !currentSession) return [];
-    return sessions.filter(s => s.eventId === currentEvent.id && s.day === currentSession.day);
+    return sessions.filter(s => s.eventId === currentEvent.id);
   }, [currentEvent, currentSession, sessions]);
 
-  const dayStartTime = currentEvent?.startTimeByDay[currentSession?.day || 1] || '09:00';
+  const dayStartTime = currentEvent?.startTime || '09:00';
   const adaptiveSessions = useAdaptiveSchedule(eventDaySessions, dayStartTime, isAutoLiveMode);
   const sessionWithTiming = useMemo(() => 
     adaptiveSessions.find(s => s.id === selectedSessionId),
@@ -398,10 +489,15 @@ export default function App() {
                 onToggleLive={toggleLive}
                 onEditSession={navigateToEditSession}
                 onAddEvent={addEvent}
+                onAddSession={navigateToAddSession}
                 onEditEvent={navigateToEditEvent}
                 onDeleteEvent={handleDeleteEvent}
+                onDeleteSession={handleDeleteSession}
                 onReorderSessions={handleReorderSessions}
                 onQuickAdd={handleQuickAddSession}
+                hasPendingChanges={hasPendingChanges}
+                onPublishChanges={publishPendingChanges}
+                onDiscardChanges={clearPendingChanges}
               />
             </motion.div>
           )}

@@ -85,7 +85,7 @@ export const EventsListView: React.FC<EventsListViewProps> = ({
           ) : (
             <span className="bg-primary/90 backdrop-blur-md text-on-primary text-xs font-bold px-2.5 py-1.5 rounded-full shadow-lg flex items-center gap-1">
               <Layers className="w-3.5 h-3.5" />
-              {event.totalDays} {event.totalDays === 1 ? 'Day' : 'Days'}
+              Event
             </span>
           )}
         </div>
@@ -103,7 +103,7 @@ export const EventsListView: React.FC<EventsListViewProps> = ({
         <div className="flex items-center justify-between text-secondary pt-3 border-t border-outline-variant/30">
           <div className="flex items-center gap-2 font-body-md font-medium text-xs md:text-sm">
             <Clock className="w-4 h-4 text-primary" />
-            <span>{isPast ? 'Concluded' : `Starts at ${formatTimeTo12h(event.startTimeByDay[1] || '09:00')}`}</span>
+            <span>{isPast ? 'Concluded' : `Starts at ${formatTimeTo12h(event.startTime || '09:00')}`}</span>
           </div>
           <div className="flex items-center gap-1 text-primary font-bold text-xs uppercase tracking-wider group-hover:translate-x-1 transition-transform">
             <span>{isPast ? 'View Archive' : 'View Schedule'}</span>
