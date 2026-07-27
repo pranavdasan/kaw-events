@@ -7,6 +7,7 @@ import { createSlug, fileToBase64 } from '../../utils/imageUtils';
 interface AdminEditViewProps {
   session: Session;
   allParticipants: Participant[];
+  allSessions: Session[];
   onBack: () => void;
   onSave: (session: Session) => void;
   onCreateParticipant: (participant: Participant) => void;
@@ -18,6 +19,7 @@ interface AdminEditViewProps {
 export const AdminEditView: React.FC<AdminEditViewProps> = ({ 
   session, 
   allParticipants, 
+  allSessions,
   onBack, 
   onSave, 
   onCreateParticipant 
@@ -354,9 +356,12 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
               return;
             }
             // Keep the original ID for updates, only generate slug for truly new sessions
-            const finalId = session.id.startsWith('s-') 
-              ? session.id 
-              : createSlug(`${formData.eventId}-${formData.title}`);
+            // Check if it's a new session (either s- prefix from green button or createSlug from quick-add)
+            const isNewSession = session.id.startsWith('s-') || 
+              !allSessions.some(s => s.id === session.id);
+            const finalId = isNewSession 
+              ? createSlug(`${formData.eventId}-${formData.title}`)
+              : session.id;
             console.log('Saving session:', { ...formData, id: finalId });
             onSave({ ...formData, id: finalId });
           }}

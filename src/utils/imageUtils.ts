@@ -28,7 +28,7 @@ export const createSlug = (text: string, prefix = ''): string => {
 const createSvgBase64 = (svgContent: string): string => {
   const encoded = typeof btoa !== 'undefined' 
     ? btoa(unescape(encodeURIComponent(svgContent)))
-    : Buffer.from(svgContent).toString('base64');
+    : btoa(unescape(encodeURIComponent(svgContent))); // Fallback for browser
   return `data:image/svg+xml;base64,${encoded}`;
 };
 

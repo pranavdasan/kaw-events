@@ -20,6 +20,7 @@ export interface Session {
   isLive: boolean;
   type?: 'session' | 'break';
   order: number;
+  isPending?: boolean;
 }
 
 export interface Event {

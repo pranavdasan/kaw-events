@@ -236,8 +236,10 @@ export default function App() {
   };
 
   const navigateToAddSession = (eventId: string) => {
+    // Navigate to admin-edit with a new session flag, session will be created on save
+    const tempId = `s-${Date.now()}`;
     const newSession: Session = {
-      id: `s-${Date.now()}`,
+      id: tempId,
       eventId,
       title: '',
       description: '',
@@ -249,9 +251,13 @@ export default function App() {
       type: 'session',
       order: 0
     };
-    setSessions(prev => [...prev, newSession]);
-    setSelectedSessionId(newSession.id);
+    // Don't add to sessions yet - only add when user saves
+    // We pass the temp session to the edit view
+    setSelectedSessionId(tempId);
     setCurrentView('admin-edit');
+    // Store the temp session in a ref or use a different approach
+    // For now, add it but mark it as pending
+    setSessions(prev => [...prev, { ...newSession, isPending: true }]);
   };
 
   const navigateToEditEvent = (id: string) => {
@@ -507,6 +513,7 @@ export default function App() {
               <AdminEditView 
                 session={currentSession} 
                 allParticipants={performers}
+                allSessions={sessions}
                 onBack={() => setCurrentView('admin-dashboard')} 
                 onSave={handleSaveSession}
                 onCreateParticipant={(p) => setPerformers(prev => [...prev, p])}
