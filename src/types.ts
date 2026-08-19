@@ -4,6 +4,7 @@ export interface Participant {
   role?: string;
   group?: string;
   avatarUrl?: string;
+  eventIds: string[]; // Array of event IDs this performer is associated with
 }
 
 export type Track = 'Song' | 'Dance' | 'Committee' | 'Award' | 'General';
@@ -31,4 +32,15 @@ export interface Event {
   startTime: string;
   endTime: string;
   imageUrl: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// For user bookmarks (future multi-user support)
+export interface Bookmark {
+  id: string;
+  userId: string;
+  sessionId: string;
+  eventId: string;
+  createdAt: Date;
 }

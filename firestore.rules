@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Events collection - public read, admin write
+    match /events/{eventId} {
+      allow read: if true; // Public read for event listings
+      allow create, update, delete: if isAdmin();
+      
+      // Sessions subcollection
+      match /sessions/{sessionId} {
+        allow read: if true;
+        allow create, update, delete: if isAdmin();
+      }
+      
+      // Performers subcollection (renamed from participants)
+      match /performers/{performerId} {
+        allow read: if true;
+        allow create, update, delete: if isAdmin();
+      }
+      
+      // User bookmarks subcollection
+      match /bookmarks/{bookmarkId} {
+        allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      }
+    }
+    
+    // Top-level sessions collection (for cross-event queries)
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Top-level performers collection (for cross-event queries)
+    match /performers/{performerId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // User bookmarks (top-level for cross-event queries)
+    match /bookmarks/{bookmarkId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+    
+    // Admin users metadata
+    match /admins/{userId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

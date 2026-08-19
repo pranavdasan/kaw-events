@@ -28,11 +28,12 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [showParticipantSearch, setShowParticipantSearch] = useState(false);
   const [isCreatingParticipant, setIsCreatingParticipant] = useState(false);
-  const [newParticipant, setNewParticipant] = useState<Partial<Participant>>({
+const [newParticipant, setNewParticipant] = useState<Partial<Participant>>({
     name: '',
     role: '',
     group: '',
-    avatarUrl: ''
+    avatarUrl: '',
+    eventIds: [],
   });
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -62,7 +63,8 @@ export const AdminEditView: React.FC<AdminEditViewProps> = ({
       name: newParticipant.name,
       role: newParticipant.role || '',
       group: newParticipant.group || '',
-      avatarUrl: newParticipant.avatarUrl || ''
+      avatarUrl: newParticipant.avatarUrl || '',
+      eventIds: newParticipant.eventIds || [],
     };
 
     onCreateParticipant(createdParticipant);

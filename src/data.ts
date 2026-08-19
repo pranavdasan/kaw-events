@@ -19,36 +19,42 @@ export const PARTICIPANTS: Participant[] = [
     name: 'Radhika Nair',
     role: 'Cultural Director',
     group: 'Kerala Association of Washington',
+    eventIds: ['grand-onam-celebration-2026'],
   },
   {
     id: 'anil-kumar',
     name: 'Anil Kumar',
     role: 'Master Chenda Artist',
     group: 'Seattle Layatharangam Melam',
+    eventIds: ['grand-onam-celebration-2026'],
   },
   {
     id: 'sreejith-varma',
     name: 'Chef Sreejith Varma',
     role: 'Culinary Lead',
     group: 'KAW Sadhya Team',
+    eventIds: ['grand-onam-celebration-2026'],
   },
   {
     id: 'meera-menon',
     name: 'Meera Menon',
     role: 'Choreographer & Lead',
     group: 'Mohiniyattam Academy Seattle',
+    eventIds: ['grand-onam-celebration-2026'],
   },
   {
     id: 'vinod-pillai',
     name: 'Vinod Pillai',
     role: 'Board President',
     group: 'Kerala Association of Washington',
+    eventIds: ['grand-onam-celebration-2026'],
   },
   {
     id: 'pooja-jayaram',
     name: 'Pooja Jayaram',
     role: 'Youth Wing Chair',
     group: 'KAW Youth Forum',
+    eventIds: ['grand-onam-celebration-2026'],
   },
 ];
 
