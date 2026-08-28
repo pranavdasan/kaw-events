@@ -8,15 +8,11 @@ import {
   deleteDoc, 
   query, 
   where, 
-  orderBy, 
-  limit,
+  orderBy,
   onSnapshot,
   writeBatch,
   Timestamp,
   DocumentSnapshot,
-  QuerySnapshot,
-  arrayUnion,
-  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Event, Session, Participant } from '../types';
@@ -52,7 +48,7 @@ export const docToEvent = (doc: DocumentSnapshot): Event => {
     endTime: data.endTime || '17:00',
     imageUrl: data.imageUrl || '',
     createdAt: data.createdAt?.toDate?.().toISOString(),
-    updatedAt: data.updateAt?.toDate?.().toISOString(),
+    updatedAt: data.updatedAt?.toDate?.().toISOString(),
   };
 };
 
@@ -67,7 +63,14 @@ export const docToSession = (doc: DocumentSnapshot): Session => {
     durationInMin: data.durationInMin || 15,
     track: data.track || 'General',
     room: data.room || 'Main Hall',
-    participants: (data.participants || []).map(docToParticipant),
+    participants: (data.participants || []).map((p: any) => ({
+      id: p.id || '',
+      name: p.name || '',
+      role: p.role || '',
+      group: p.group || '',
+      avatarUrl: p.avatarUrl || '',
+      eventIds: p.eventIds || [],
+    })),
     isLive: data.isLive || false,
     type: data.type || 'session',
     order: data.order ?? 0,
@@ -75,8 +78,8 @@ export const docToSession = (doc: DocumentSnapshot): Session => {
 };
 
 // Transform Firestore doc to Participant (Performer)
-export const docToParticipant = (doc: DocumentSnapshot | { id: string; data(): any }): Participant => {
-  const data = doc.data ? doc.data() : doc;
+export const docToParticipant = (doc: DocumentSnapshot): Participant => {
+  const data = doc.data();
   return {
     id: doc.id,
     name: data.name || '',

@@ -1,5 +1,5 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { PARTICIPANTS } from '../src/data';
 import { EVENTS } from '../src/data';
 import { SESSIONS } from '../src/data';
@@ -30,8 +30,8 @@ async function seed() {
     const eventRef = db.collection('events').doc(event.id);
     await eventRef.set({
       ...event,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     });
     console.log(`  ✅ ${event.name}`);
   }
@@ -42,8 +42,8 @@ async function seed() {
     const performerRef = db.collection('performers').doc(performer.id);
     await performerRef.set({
       ...performer,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     });
     console.log(`  ✅ ${performer.name}`);
   }
@@ -54,8 +54,8 @@ async function seed() {
     const sessionRef = db.collection('sessions').doc(session.id);
     await sessionRef.set({
       ...session,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     });
     console.log(`  ✅ ${session.title}`);
   }
