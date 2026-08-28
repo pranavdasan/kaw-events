@@ -59,15 +59,11 @@ export const SessionDetailView: React.FC<SessionDetailViewProps> = ({
           {/* Quick Actions */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onToggleBookmark(session.id)}
-              className={`p-2.5 rounded-full border transition-all cursor-pointer active:scale-95 ${
-                isBookmarked 
-                  ? 'bg-primary text-on-primary border-primary shadow-xs' 
-                  : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant'
-              }`}
-              title={isBookmarked ? "Remove bookmark" : "Bookmark session"}
+              disabled
+              title="Bookmarks — coming soon"
+              className="p-2.5 rounded-full bg-surface-container-lowest text-on-surface-variant/50 border border-outline-variant/40 cursor-not-allowed"
             >
-              <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-current text-on-primary' : ''}`} />
+              <Bookmark className="w-4 h-4" />
             </button>
             <button
               onClick={() => onShareSession(session, eventName)}

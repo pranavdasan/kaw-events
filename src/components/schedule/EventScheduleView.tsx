@@ -144,20 +144,13 @@ export const EventScheduleView: React.FC<EventScheduleViewProps> = ({
                     <Share2 className="w-3.5 h-3.5" />
                   </button>
                 )}
-                {onToggleBookmark && (
-                  <button
-                    onClick={() => onToggleBookmark(session.id)}
-                    className={cn(
-                      "p-1.5 rounded-xl transition-colors cursor-pointer",
-                      isBookmarked 
-                        ? "text-primary bg-primary/10 hover:bg-primary/20" 
-                        : "text-on-surface-variant hover:bg-surface-variant"
-                    )}
-                    title={isBookmarked ? "Remove bookmark" : "Bookmark session"}
-                  >
-                    <Bookmark className={cn("w-3.5 h-3.5", isBookmarked && "fill-current")} />
-                  </button>
-                )}
+                <button
+                  disabled
+                  title="Bookmarks — coming soon"
+                  className="p-1.5 rounded-xl opacity-50 cursor-not-allowed"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-on-surface-variant/50" />
+                </button>
               </div>
             </div>
 
