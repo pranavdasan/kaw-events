@@ -3,20 +3,30 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Session, Event, Participant } from "./types";
-import {
-  SESSIONS as INITIAL_SESSIONS,
-  EVENTS as INITIAL_EVENTS,
-  PARTICIPANTS as INITIAL_PARTICIPANTS,
-} from "./data";
 import { useAdaptiveSchedule } from "./hooks/useAdaptiveSchedule";
 import { ONAM_POOKALAM_BASE64, createSlug } from "./utils/imageUtils";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { onAuthStateChanged, signOut, User, getIdTokenResult } from "firebase/auth";
 import { auth } from "./firebase";
+import {
+  subscribeToEvents,
+  subscribeToSessions,
+  subscribeToPerformersByEvent,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  createSession,
+  updateSession,
+  deleteSession,
+  reorderSessions,
+  createPerformer,
+  publishPendingChanges as firestorePublishPendingChanges,
+  getBookmarks,
+  addBookmark,
+  removeBookmark,
+} from "./services/firestore";
 
 // Import Components
 import { Layout } from "./components/common/Layout";
@@ -31,14 +41,10 @@ import { AdminDashboardView } from "./components/admin/AdminDashboardView";
 import { AdminEditView } from "./components/admin/AdminEditView";
 import { EventEditView } from "./components/admin/EventEditView";
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
 /**
  * Main Application Component
- * Manages global state using local React state with Firebase Auth for admin.
- * Data persists in localStorage for bookmarks only.
+ * Manages global state using Firestore real-time listeners.
+ * Data syncs across devices and persists to backend.
  */
 export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -53,78 +59,118 @@ export default function App() {
     | "admin-login"
   >("events");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    null,
-  );
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // Listen for auth state changes
-  useEffect(() => {
-    const allowedUids =
-      import.meta.env.VITE_ADMIN_UIDS?.split(",").map((u: string) =>
-        u.trim(),
-      ) || [];
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setAuthUser(user);
-      const isAllowed =
-        user && (allowedUids.length === 0 || allowedUids.includes(user.uid));
-      setIsAdmin(!!isAllowed);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Initialize from localStorage if available, otherwise use initial data
-  const [events, setEvents] = useState<Event[]>(() => {
-    try {
-      const stored = localStorage.getItem("kaw-events");
-      return stored ? JSON.parse(stored) : INITIAL_EVENTS;
-    } catch {
-      return INITIAL_EVENTS;
-    }
-  });
-
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    try {
-      const stored = localStorage.getItem("kaw-sessions");
-      return stored ? JSON.parse(stored) : INITIAL_SESSIONS;
-    } catch {
-      return INITIAL_SESSIONS;
-    }
-  });
-
-  const [performers, setPerformers] = useState<Participant[]>(() => {
-    try {
-      const stored = localStorage.getItem("kaw-participants");
-      return stored ? JSON.parse(stored) : INITIAL_PARTICIPANTS;
-    } catch {
-      return INITIAL_PARTICIPANTS;
-    }
-  });
-
+  // Firestore data state
+  const [events, setEvents] = useState<Event[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [performers, setPerformers] = useState<Participant[]>([]);
   const [isAutoLiveMode, setIsAutoLiveMode] = useState<boolean>(true);
 
-  // Track pending changes for "Update Event" feature
-  const [pendingEvents, setPendingEvents] = useState<Map<string, Event>>(
-    new Map(),
-  );
-  const [pendingSessions, setPendingSessions] = useState<Map<string, Session>>(
-    new Map(),
-  );
+  // Pending changes for "Update Event" feature
+  const [pendingEvents, setPendingEvents] = useState<Map<string, Event>>(new Map());
+  const [pendingSessions, setPendingSessions] = useState<Map<string, Session>>(new Map());
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
 
-  // Store original state for revert functionality - initialized from initial data
-  const [originalEvents, setOriginalEvents] = useState<Event[] | null>(
-    INITIAL_EVENTS,
-  );
-  const [originalSessions, setOriginalSessions] = useState<Session[] | null>(
-    INITIAL_SESSIONS,
-  );
+  // Store original state for revert functionality
+  const [originalEvents, setOriginalEvents] = useState<Event[] | null>(null);
+  const [originalSessions, setOriginalSessions] = useState<Session[] | null>(null);
 
+  // Bookmarks & Share State
+  const [bookmarkedSessionIds, setBookmarkedSessionIds] = useState<string[]>([]);
+  const [bookmarksLoading, setBookmarksLoading] = useState(true);
+  const [shareModalData, setShareModalData] = useState<{
+    isOpen: boolean;
+    session?: Session;
+    eventName?: string;
+  }>({ isOpen: false });
+
+  // Track subscriptions for cleanup
+  const subscriptionsRef = useRef<Array<() => void>>([]);
+
+  // --- Auth State Listener ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setAuthUser(user);
+      setAuthLoading(false);
+
+      if (user) {
+        // Check custom claims for admin status
+        try {
+          const tokenResult = await getIdTokenResult(user, true);
+          setIsAdmin(tokenResult.claims.admin === true);
+        } catch {
+          setIsAdmin(false);
+        }
+
+        // Load user bookmarks
+        try {
+          const bookmarks = await getBookmarks(user.uid);
+          setBookmarkedSessionIds(bookmarks);
+        } catch (err) {
+          console.error("Failed to load bookmarks:", err);
+        } finally {
+          setBookmarksLoading(false);
+        }
+      } else {
+        setIsAdmin(false);
+        setBookmarkedSessionIds([]);
+        setBookmarksLoading(false);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      // Cleanup all Firestore subscriptions
+      subscriptionsRef.current.forEach((unsub) => unsub());
+      subscriptionsRef.current = [];
+    };
+  }, []);
+
+  // --- Firestore Subscriptions ---
+  useEffect(() => {
+    // Subscribe to events
+    const unsubEvents = subscribeToEvents((firestoreEvents) => {
+      setEvents(firestoreEvents);
+      // Auto-select first event if none selected
+      if (!selectedEventId && firestoreEvents.length > 0) {
+        setSelectedEventId(firestoreEvents[0].id);
+      }
+    });
+    subscriptionsRef.current.push(unsubEvents);
+
+    // Subscribe to sessions for selected event
+    let unsubSessions: (() => void) | null = null;
+    if (selectedEventId) {
+      unsubSessions = subscribeToSessions(selectedEventId, (firestoreSessions) => {
+        setSessions(firestoreSessions);
+      });
+      subscriptionsRef.current.push(unsubSessions);
+    }
+
+    return () => {
+      if (unsubSessions) unsubSessions();
+    };
+  }, [selectedEventId]);
+
+  // Subscribe to performers for selected event
+  useEffect(() => {
+    let unsubPerformers: (() => void) | null = null;
+    if (selectedEventId) {
+      unsubPerformers = subscribeToPerformersByEvent(selectedEventId, (firestorePerformers) => {
+        setPerformers(firestorePerformers);
+      });
+      subscriptionsRef.current.push(unsubPerformers);
+    }
+    return () => {
+      if (unsubPerformers) unsubPerformers();
+    };
+  }, [selectedEventId]);
+
+  // --- Pending Changes Helpers ---
   const markEventPending = (event: Event) => {
-    // Store original state on first pending change
     if (pendingEvents.size === 0 && pendingSessions.size === 0) {
       setOriginalEvents(events);
       setOriginalSessions(sessions);
@@ -134,7 +180,6 @@ export default function App() {
   };
 
   const markSessionPending = (session: Session) => {
-    // Store original state on first pending change
     if (pendingEvents.size === 0 && pendingSessions.size === 0) {
       setOriginalEvents(events);
       setOriginalSessions(sessions);
@@ -144,7 +189,6 @@ export default function App() {
   };
 
   const clearPendingChanges = () => {
-    // Restore original state
     if (originalEvents) setEvents(originalEvents);
     if (originalSessions) setSessions(originalSessions);
     setPendingEvents(new Map());
@@ -154,107 +198,20 @@ export default function App() {
     setOriginalSessions(null);
   };
 
-  const publishPendingChanges = () => {
-    if (pendingEvents.size > 0) {
-      setEvents((prev) => {
-        const updated = [...prev];
-        pendingEvents.forEach((event) => {
-          const idx = updated.findIndex((e) => e.id === event.id);
-          if (idx >= 0) updated[idx] = event;
-          else updated.push(event);
-        });
-        return updated;
-      });
-    }
-    if (pendingSessions.size > 0) {
-      setSessions((prev) => {
-        const updated = [...prev];
-        pendingSessions.forEach((session) => {
-          const idx = updated.findIndex((s) => s.id === session.id);
-          if (idx >= 0) updated[idx] = session;
-          else updated.push(session);
-        });
-        return updated;
-      });
-    }
-    clearPendingChanges();
-  };
-
-  // Persist events, sessions, performers to localStorage
-  useEffect(() => {
+  const publishPendingChanges = async () => {
     try {
-      localStorage.setItem("kaw-events", JSON.stringify(events));
-    } catch (err) {
-      console.error("Failed to save events", err);
-    }
-  }, [events]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("kaw-sessions", JSON.stringify(sessions));
-    } catch (err) {
-      console.error("Failed to save sessions", err);
-    }
-  }, [sessions]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("kaw-participants", JSON.stringify(performers));
-    } catch (err) {
-      console.error("Failed to save participants", err);
-    }
-  }, [performers]);
-
-  // --- Bookmarks & Share State ---
-  const [bookmarkedSessionIds, setBookmarkedSessionIds] = useState<string[]>(
-    () => {
-      try {
-        return JSON.parse(localStorage.getItem("bookmarkedSessions") || "[]");
-      } catch {
-        return ["s2", "s3"]; // Default demo bookmarks
-      }
-    },
-  );
-
-  const [shareModalData, setShareModalData] = useState<{
-    isOpen: boolean;
-    session?: Session;
-    eventName?: string;
-  }>({ isOpen: false });
-
-  // Save bookmarks to localStorage on change
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "bookmarkedSessions",
-        JSON.stringify(bookmarkedSessionIds),
+      await firestorePublishPendingChanges(
+        Array.from(pendingEvents.values()),
+        Array.from(pendingSessions.values())
       );
+      clearPendingChanges();
     } catch (err) {
-      console.error("Failed to save bookmarks", err);
+      console.error("Failed to publish changes:", err);
+      alert("Failed to publish changes. Please try again.");
     }
-  }, [bookmarkedSessionIds]);
-
-  const toggleBookmark = (sessionId: string) => {
-    setBookmarkedSessionIds((prev) =>
-      prev.includes(sessionId)
-        ? prev.filter((id) => id !== sessionId)
-        : [...prev, sessionId],
-    );
-  };
-
-  const handleOpenShare = (session: Session, eventName?: string) => {
-    const parentEvent = eventName
-      ? null
-      : events.find((e) => e.id === session.eventId);
-    setShareModalData({
-      isOpen: true,
-      session,
-      eventName: eventName || parentEvent?.name || "KAW Events",
-    });
   };
 
   // --- Navigation Handlers ---
-
   const navigateToSession = (id: string) => {
     const sessionObj = sessions.find((s) => s.id === id);
     if (sessionObj) {
@@ -272,7 +229,6 @@ export default function App() {
   };
 
   const navigateToAddSession = (eventId: string) => {
-    // Navigate to admin-edit with a new session flag, session will be created on save
     const tempId = `s-${Date.now()}`;
     const newSession: Session = {
       id: tempId,
@@ -286,14 +242,11 @@ export default function App() {
       isLive: false,
       type: "session",
       order: 0,
+      isPending: true,
     };
-    // Don't add to sessions yet - only add when user saves
-    // We pass the temp session to the edit view
     setSelectedSessionId(tempId);
     setCurrentView("admin-edit");
-    // Store the temp session in a ref or use a different approach
-    // For now, add it but mark it as pending
-    setSessions((prev) => [...prev, { ...newSession, isPending: true }]);
+    setSessions((prev) => [...prev, newSession]);
   };
 
   const navigateToEditEvent = (id: string) => {
@@ -306,16 +259,14 @@ export default function App() {
     setCurrentView("schedule");
   };
 
-  // --- Data Management & Mutation Handlers (localStorage only) ---
-
+  // --- Data Mutation Handlers (Firestore) ---
   const toggleLive = (sessionId: string) => {
     setIsAutoLiveMode(false);
     const targetSession = sessions.find((s) => s.id === sessionId);
     if (targetSession) {
       const updated = { ...targetSession, isLive: !targetSession.isLive };
-      setSessions((prev) =>
-        prev.map((s) => (s.id === sessionId ? updated : s)),
-      );
+      updateSession(sessionId, updated).catch(console.error);
+      setSessions((prev) => prev.map((s) => (s.id === sessionId ? updated : s)));
     }
   };
 
@@ -323,51 +274,110 @@ export default function App() {
     setIsAutoLiveMode(true);
   };
 
-  const handleSaveSession = (updatedSession: Session) => {
+  const handleSaveSession = async (updatedSession: Session) => {
     console.log("handleSaveSession received:", updatedSession);
-    setSessions((prev) =>
-      prev.map((s) => (s.id === updatedSession.id ? updatedSession : s)),
-    );
-    markSessionPending(updatedSession);
+    
+    if (updatedSession.isPending || updatedSession.id.startsWith("s-")) {
+      // New session - create in Firestore
+      const { isPending, ...sessionData } = updatedSession;
+      try {
+        const newId = await createSession(sessionData);
+        setSessions((prev) =>
+          prev.map((s) => (s.id === updatedSession.id ? { ...sessionData, id: newId } : s))
+        );
+        if (selectedSessionId === updatedSession.id) {
+          setSelectedSessionId(newId);
+        }
+      } catch (err) {
+        console.error("Failed to create session:", err);
+        alert("Failed to save session. Please try again.");
+        return;
+      }
+    } else {
+      // Existing session - update in Firestore
+      try {
+        await updateSession(updatedSession.id, updatedSession);
+        setSessions((prev) =>
+          prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
+        );
+      } catch (err) {
+        console.error("Failed to update session:", err);
+        alert("Failed to save session. Please try again.");
+        return;
+      }
+    }
+    markSessionPending(updatedSession.isPending ? { ...updatedSession, isPending: false } : updatedSession);
     setCurrentView("admin-dashboard");
   };
 
-  const handleSaveEvent = (updatedEvent: Event) => {
-    setEvents((prev) =>
-      prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
-    );
-    markEventPending(updatedEvent);
-    setCurrentView("admin-dashboard");
+  const handleSaveEvent = async (updatedEvent: Event) => {
+    try {
+      if (updatedEvent.id.startsWith("e-")) {
+        // New event
+        const { id, ...eventData } = updatedEvent;
+        const newId = await createEvent(eventData);
+        setEvents((prev) => [...prev, { ...eventData, id: newId }]);
+        setSelectedEventId(newId);
+      } else {
+        // Existing event
+        await updateEvent(updatedEvent.id, updatedEvent);
+        setEvents((prev) => prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)));
+      }
+      markEventPending(updatedEvent);
+      setCurrentView("admin-dashboard");
+    } catch (err) {
+      console.error("Failed to save event:", err);
+      alert("Failed to save event. Please try again.");
+    }
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== eventId));
-    setSessions((prev) => prev.filter((s) => s.eventId !== eventId));
-    setCurrentView("admin-dashboard");
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await deleteEvent(eventId);
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      setSessions((prev) => prev.filter((s) => s.eventId !== eventId));
+      if (selectedEventId === eventId) {
+        setSelectedEventId(events.find((e) => e.id !== eventId)?.id || null);
+      }
+      setCurrentView("admin-dashboard");
+    } catch (err) {
+      console.error("Failed to delete event:", err);
+      alert("Failed to delete event. Please try again.");
+    }
   };
 
-  const handleDeleteSession = (sessionId: string) => {
-    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await deleteSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+      alert("Failed to delete session. Please try again.");
+    }
   };
 
-  const handleReorderSessions = (reordered: Session[]) => {
+  const handleReorderSessions = async (reordered: Session[]) => {
+    // Update local state immediately for responsiveness
     setSessions((prev) => {
       const otherSessions = prev.filter(
         (s) => !reordered.some((r) => r.id === s.id),
       );
       return [...otherSessions, ...reordered];
     });
+    // Persist to Firestore
+    try {
+      await reorderSessions(reordered);
+    } catch (err) {
+      console.error("Failed to reorder sessions:", err);
+    }
+    // Mark all reordered sessions as pending
+    reordered.forEach((s) => markSessionPending(s));
   };
 
-  /**
-   * Fast way to add intermissions or breaks without full form entry.
-   */
   const handleQuickAddSession = (title: string, duration: number) => {
     if (!selectedEventId) return;
 
-    const eventDaySessions = sessions.filter(
-      (s) => s.eventId === selectedEventId,
-    );
+    const eventDaySessions = sessions.filter((s) => s.eventId === selectedEventId);
     const maxOrder = eventDaySessions.reduce(
       (max, s) => Math.max(max, s.order ?? 0),
       -1,
@@ -407,18 +417,68 @@ export default function App() {
     setCurrentView("admin-event-edit");
   };
 
-  // --- Memos & Derived State ---
+  // --- Bookmark Handlers (Firestore) ---
+  const toggleBookmark = useCallback(async (sessionId: string) => {
+    if (!authUser) return;
+    
+    setBookmarkedSessionIds((prevBookmarks) => {
+      const isBookmarked = prevBookmarks.includes(sessionId);
+      const newBookmarks = isBookmarked
+        ? prevBookmarks.filter((id) => id !== sessionId)
+        : [...prevBookmarks, sessionId];
+      
+      // Fire and forget Firestore update
+      sessions.find((s) => s.id === sessionId)?.eventId && (async () => {
+        try {
+          if (isBookmarked) {
+            await removeBookmark(authUser.uid, sessionId);
+          } else {
+            await addBookmark(authUser.uid, sessionId, sessions.find((s) => s.id === sessionId)!.eventId);
+          }
+        } catch (err) {
+          console.error("Failed to update bookmark:", err);
+          setBookmarkedSessionIds(prevBookmarks);
+        }
+      })();
+      
+      return newBookmarks;
+    });
+  }, [authUser]);
 
+  const handleOpenShare = (session: Session, eventName?: string) => {
+    const parentEvent = eventName
+      ? null
+      : events.find((e) => e.id === session.eventId);
+    setShareModalData({
+      isOpen: true,
+      session,
+      eventName: eventName || parentEvent?.name || "KAW Events",
+    });
+  };
+
+  // --- Handle Deep Links ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session");
+    if (sessionId) {
+      const sessionObj = sessions.find((s) => s.id === sessionId);
+      if (sessionObj) {
+        navigateToSession(sessionId);
+      }
+    }
+  }, [sessions]);
+
+  // --- Memos & Derived State ---
   const currentEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId),
     [events, selectedEventId],
   );
+
   const currentSession = useMemo(
     () => sessions.find((s) => s.id === selectedSessionId),
     [sessions, selectedSessionId],
   );
 
-  // Calculate adaptive timing for session detail view (requires full list of that event's sessions)
   const eventDaySessions = useMemo(() => {
     if (!currentEvent || !currentSession) return [];
     return sessions.filter((s) => s.eventId === currentEvent.id);
@@ -430,6 +490,7 @@ export default function App() {
     dayStartTime,
     isAutoLiveMode,
   );
+
   const sessionWithTiming = useMemo(
     () => adaptiveSessions.find((s) => s.id === selectedSessionId),
     [adaptiveSessions, selectedSessionId],
@@ -458,7 +519,7 @@ export default function App() {
     }
   }, [currentView, currentEvent]);
 
-  if (authLoading) {
+  if (authLoading || bookmarksLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
@@ -586,9 +647,7 @@ export default function App() {
               <SessionDetailView
                 session={sessionWithTiming}
                 eventName={currentEvent?.name}
-                isBookmarked={bookmarkedSessionIds.includes(
-                  sessionWithTiming.id,
-                )}
+                isBookmarked={bookmarkedSessionIds.includes(sessionWithTiming.id)}
                 onToggleBookmark={toggleBookmark}
                 onShareSession={handleOpenShare}
                 onBack={() => setCurrentView("schedule")}
@@ -639,9 +698,10 @@ export default function App() {
                 allSessions={sessions}
                 onBack={() => setCurrentView("admin-dashboard")}
                 onSave={handleSaveSession}
-                onCreateParticipant={(p) =>
-                  setPerformers((prev) => [...prev, p])
-                }
+                onCreateParticipant={async (p) => {
+                  const newId = await createPerformer(p);
+                  setPerformers((prev) => [...prev, { ...p, id: newId }]);
+                }}
               />
             </motion.div>
           )}
