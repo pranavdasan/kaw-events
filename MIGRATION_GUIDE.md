@@ -41,6 +41,18 @@ firebase deploy --only firestore:rules,firestore:indexes
 npx tsx scripts/seed-firestore.ts
 ```
 
+### 5b. Set Admin Custom Claims (Required for Admin Access)
+```bash
+# After creating admin user(s) in Firebase Auth, grant admin access:
+npm run admin:set <admin-uid>
+
+# List current admins:
+npm run admin:list
+
+# Revoke admin access:
+npm run admin:remove <admin-uid>
+```
+
 ### 6. Test with Emulators (Optional)
 ```bash
 VITE_USE_EMULATORS=true npm run dev
@@ -77,7 +89,6 @@ VITE_FIREBASE_PROJECT_ID=your-project-id
 VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
 VITE_FIREBASE_APP_ID=your-app-id
-VITE_ADMIN_UIDS=uid1,uid2,uid3  # Comma-separated admin UIDs
 VITE_USE_EMULATORS=false  # Set to true for emulators
 ```
 
@@ -130,10 +141,8 @@ firebase deploy
 
 ## Security Rules Summary
 
-- **Events/Sessions/Performers**: Public read, Admin write
+- **Events/Sessions/Performers**: Public read, Admin write (via custom claim `admin: true`)
 - **Bookmarks**: User owns their bookmarks
 - **Admins**: Admin-only access
 
-Admin status determined by:
-1. Custom claim `admin: true` (preferred, set via Admin SDK)
-2. Fallback: UID in `VITE_ADMIN_UIDS` env var
+Admin status determined by custom claim `admin: true` (set via Admin SDK script: `npm run admin:set <uid>`).

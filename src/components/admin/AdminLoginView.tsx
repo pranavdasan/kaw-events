@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../../firebase';
+import { auth } from '@/firebase';
 
 interface AdminLoginViewProps {
   onLogin: (user: any) => void;
