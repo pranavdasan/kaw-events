@@ -129,7 +129,7 @@ export default function App() {
     };
   }, []);
 
-  // --- Firestore Subscriptions ---
+  // --- Parallel Firestore Subscriptions ---
   useEffect(() => {
     // Subscribe to events
     const unsubEvents = subscribeToEvents((firestoreEvents) => {
@@ -150,13 +150,7 @@ export default function App() {
       subscriptionsRef.current.push(unsubSessions);
     }
 
-    return () => {
-      if (unsubSessions) unsubSessions();
-    };
-  }, [selectedEventId]);
-
-  // Subscribe to performers for selected event
-  useEffect(() => {
+    // Subscribe to performers for selected event
     let unsubPerformers: (() => void) | null = null;
     if (selectedEventId) {
       unsubPerformers = subscribeToPerformersByEvent(selectedEventId, (firestorePerformers) => {
@@ -164,7 +158,9 @@ export default function App() {
       });
       subscriptionsRef.current.push(unsubPerformers);
     }
+
     return () => {
+      if (unsubSessions) unsubSessions();
       if (unsubPerformers) unsubPerformers();
     };
   }, [selectedEventId]);
