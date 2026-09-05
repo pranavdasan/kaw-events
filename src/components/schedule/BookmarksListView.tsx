@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Bookmark, Sparkles } from 'lucide-react';
+import { SessionCard } from '../../components/schedule/SessionCard';
+import { AdaptiveSession } from '../../hooks/useAdaptiveSchedule';
 import { Event } from '../../types';
 
 function cn(...inputs: string[]) {
@@ -40,10 +42,24 @@ export const BookmarksListView: React.FC<BookmarksListViewProps> = ({
         <Bookmark className="w-10 h-10" />
       </div>
       <div className="max-w-md space-y-2">
-        <h2 className="font-headline-md text-primary font-extrabold text-xl md:text-2xl m-0">Bookmarks — Coming Soon</h2>
-        <p className="text-on-surface-variant font-body-md text-sm md:text-base leading-relaxed">
-          We're building cross-device saved agendas. For now, browse events and sessions freely!
-        </p>
+        <h2 className="font-headline-md text-primary font-extrabold text-xl md:text-2xl m-0">Bookmarks</h2>
+        {sessions.length > 0 ? (
+          sessions.map(session => (
+            <SessionCard
+              key={session.id}
+              variant="bookmark"
+              session={session as AdaptiveSession}
+              onClick={onSessionClick}
+              onShare={onShareSession}
+              onToggleBookmark={onToggleBookmark}
+              eventName={events[0]?.name || 'Event'}
+            />
+          ))
+        ) : (
+          <p className="text-on-surface-variant font-body-md text-sm md:text-base leading-relaxed">
+            We're building cross-device saved agendas. For now, browse events and sessions freely!
+          </p>
+        )}
       </div>
       <button
         onClick={onExploreEvents}

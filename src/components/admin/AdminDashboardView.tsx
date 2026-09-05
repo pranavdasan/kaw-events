@@ -5,6 +5,7 @@ import { Event, Session } from '../../types';
 import { useAdaptiveSchedule } from '../../hooks/useAdaptiveSchedule';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { SessionCard } from '../schedule/SessionCard';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
 function cn(...inputs: ClassValue[]) {
@@ -384,84 +385,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <Reorder.Group axis="y" values={adaptiveSessions} onReorder={handleReorder} className="space-y-2 relative">
               <div className="hidden sm:block absolute left-32 top-4 bottom-4 w-0.5 bg-outline-variant/30 -z-10" />
               {adaptiveSessions.length > 0 ? adaptiveSessions.map(session => (
-                <Reorder.Item key={session.id} value={session}>
-                  <div className={cn(
-                    "bg-surface-container-lowest rounded-2xl p-4 sm:p-5 shadow-xs border border-outline-variant/30 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 group transition-all hover:shadow-md",
-                    session.isLive && "border-l-4 border-l-error bg-gradient-to-r from-error/5 via-surface-container-lowest to-surface-container-lowest"
-                  )}>
-                    <div className="flex items-center justify-between w-full sm:w-auto">
-                      <div className="cursor-grab active:cursor-grabbing text-outline-variant hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-surface-container-high touch-none">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-
-                      {/* Mobile Only Time Display */}
-                      <div className="sm:hidden flex items-center gap-2">
-                        <span className="font-time-display text-primary font-bold text-sm">{session.calculatedStartTime}</span>
-                        {session.isLive ? (
-                          <span className="text-error font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 bg-error/10 px-2 py-0.5 rounded-full">
-                            <span className="h-1.5 w-1.5 rounded-full bg-error animate-ping" /> LIVE
-                          </span>
-                        ) : (
-                          <span className="text-on-surface-variant text-[11px] font-bold uppercase">{session.durationInMin}m</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="hidden sm:block w-28 flex-shrink-0">
-                      <span className="font-time-display text-primary font-bold">{session.calculatedStartTime}</span>
-                      {session.isLive ? (
-                        <span className="text-error font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 mt-0.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-error animate-ping" /> LIVE
-                        </span>
-                      ) : (
-                        <span className="text-on-surface-variant text-[11px] font-bold uppercase mt-0.5 block">{session.durationInMin} MIN</span>
-                      )}
-                    </div>
-
-                    <div className="flex-1 w-full">
-                      <h3 className="font-headline-sm text-primary text-base font-bold leading-snug">{session.title}</h3>
-                      <p className="font-body-md text-on-surface-variant text-xs mt-0.5">{session.room} • {session.participants[0]?.name || 'Staff'}</p>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/30">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Live</span>
-                        <button 
-                          onClick={() => onToggleLive(session.id)}
-                          className={cn(
-                            "w-12 h-6 rounded-full relative transition-all shadow-inner cursor-pointer",
-                            session.isLive ? "bg-error" : "bg-surface-dim border border-outline/20"
-                          )}
-                          aria-label="Toggle Live State"
-                        >
-                          <div className={cn(
-                            "absolute top-1 w-4 h-4 rounded-full shadow-sm transition-all",
-                            session.isLive ? "right-1 bg-white" : "left-1 bg-white"
-                          )} />
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => onEditSession(session.id)} 
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high active:scale-95 transition-all cursor-pointer border border-outline-variant/30"
-                        aria-label="Edit Session"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-
-                      {onDeleteSession && (
-                        <button 
-                          onClick={() => setDeleteSessionId(session.id)}
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-error/10 hover:text-error active:scale-95 transition-all cursor-pointer border border-outline-variant/30"
-                          aria-label="Delete Session"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </Reorder.Item>
-              )) : (
+                  <SessionCard
+                    key={session.id}
+                    variant="admin"
+                    session={session}
+                    onToggleLive={onToggleLive}
+                    onEdit={onEditSession}
+                    onDelete={onDeleteSession}
+                    onReorder={handleReorder}
+                  />
+                )) : (
                 <div className="p-8 text-center bg-surface-container-low rounded-2xl border-2 border-dashed border-outline-variant">
                   <p className="text-on-surface-variant font-medium text-sm">No sessions scheduled for this day.</p>
                 </div>

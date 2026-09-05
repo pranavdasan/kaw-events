@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, MapPin, Users, ChevronRight, Layers, Bookmark, Share2 } from 'lucide-react';
+import { Utensils, MapPin, Users, ChevronRight } from 'lucide-react';
 import { Event, Session, Track } from '../../types';
 import { useAdaptiveSchedule, AdaptiveSession } from '../../hooks/useAdaptiveSchedule';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { SessionCard } from './SessionCard';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -63,142 +64,6 @@ export const EventScheduleView: React.FC<EventScheduleViewProps> = ({
     return groups;
   }, [finalSessions]);
 
-  const renderSingleSessionCard = (session: AdaptiveSession, isParallel: boolean = false) => {
-    if (session.type === 'break') {
-      return (
-        <div key={session.id} className="bg-surface-container-high/70 backdrop-blur-sm rounded-2xl py-3.5 px-4 flex items-center gap-4 border border-outline-variant/20">
-          <div className="flex shrink-0 items-center gap-2 text-secondary font-bold text-xs">
-            <Utensils className="w-4 h-4" />
-            <span>{session.calculatedStartTime}</span>
-          </div>
-          <p className="font-bold text-sm text-on-surface m-0">{session.title}</p>
-        </div>
-      );
-    }
-
-    const isBookmarked = bookmarkedSessionIds.includes(session.id);
-
-    return (
-      <motion.div 
-        key={session.id}
-        whileTap={{ scale: 0.985 }}
-        onClick={() => onSessionClick(session.id)}
-        className={cn(
-          "bg-surface-container-lowest rounded-3xl p-5 shadow-xs border border-outline-variant/40 hover:shadow-md transition-all duration-200 relative overflow-hidden flex flex-col justify-between gap-4 cursor-pointer group",
-          session.isLive && "border-l-4 border-l-error ring-1 ring-error/30 bg-gradient-to-r from-error/5 via-surface-container-lowest to-surface-container-lowest",
-          !isParallel && "md:flex-row md:gap-6"
-        )}
-      >
-        {/* Left/Header Column: Time & Status */}
-        <div className={cn(
-          "flex items-center justify-between shrink-0 pb-2 border-b border-outline-variant/30",
-          !isParallel && "md:flex-col md:items-start md:justify-start md:w-28 md:pb-0 md:border-b-0"
-        )}>
-          <div>
-            <p className="font-time-display text-primary text-base md:text-lg font-extrabold m-0 leading-tight">
-              {session.calculatedStartTime}
-            </p>
-            <p className="text-xs text-on-surface-variant font-medium mt-0.5">
-              {session.durationInMin} min
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {isParallel && (
-              <span className="bg-primary/10 text-primary font-extrabold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                <Layers className="w-3 h-3" /> Concurrent
-              </span>
-            )}
-            {session.isLive && (
-              <span className="inline-flex items-center gap-1.5 bg-error text-on-error px-2.5 py-1 rounded-full font-bold text-[10px] tracking-wider uppercase shadow-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                LIVE
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Content Section */}
-        <div className="flex-grow space-y-3">
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider">
-                <span className={session.isLive ? "text-error" : "text-primary font-extrabold"}>
-                  {session.track} Track
-                </span>
-                <span className="text-outline-variant">•</span>
-                <span className="text-on-surface-variant flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {session.room}
-                </span>
-              </div>
-
-              {/* Action buttons: Bookmark & Share */}
-              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                {onShareSession && (
-                  <button
-                    onClick={() => onShareSession(session, event.name)}
-                    className="p-1.5 rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors cursor-pointer"
-                    title="Share session"
-                  >
-                    <Share2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                <button
-                  disabled
-                  title="Bookmarks — coming soon"
-                  className="p-1.5 rounded-xl opacity-50 cursor-not-allowed"
-                >
-                  <Bookmark className="w-3.5 h-3.5 text-on-surface-variant/50" />
-                </button>
-              </div>
-            </div>
-
-            <h3 className="font-headline-sm text-on-surface text-base md:text-lg font-bold group-hover:text-primary transition-colors line-clamp-2 leading-snug">
-              {session.title}
-            </h3>
-            
-            {session.isLive && session.description && (
-              <p className="text-xs text-on-surface-variant line-clamp-2 mt-1.5 leading-relaxed">
-                {session.description}
-              </p>
-            )}
-          </div>
-
-          {/* Participants footer */}
-          <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2.5">
-              <div className="flex -space-x-2.5 overflow-hidden">
-                {session.participants.slice(0, 3).map(p => (
-                  <div 
-                    key={p.id} 
-                    className="w-8 h-8 rounded-full border-2 border-surface-container-lowest bg-primary/10 shrink-0 shadow-xs flex items-center justify-center"
-                  >
-                    <span className="text-xs font-bold text-primary">{p.name.charAt(0)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="truncate max-w-[180px]">
-                <p className="text-xs font-bold text-on-surface truncate m-0">
-                  {session.participants.length > 1 ? 'Participants' : session.participants[0]?.name || 'Participant'}
-                </p>
-                {session.participants.length === 1 && session.participants[0].group && (
-                  <p className="text-[11px] text-on-surface-variant truncate m-0">
-                    {session.participants[0].group}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="p-1.5 rounded-full bg-surface-container-low text-primary opacity-80 group-hover:bg-primary group-hover:text-on-primary transition-all shrink-0">
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    );
-  };
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
       {/* Sticky Header Filters on Mobile for smooth scrolling */}
@@ -245,7 +110,17 @@ export const EventScheduleView: React.FC<EventScheduleViewProps> = ({
                 "grid grid-cols-1 gap-4",
                 group.sessions.length > 1 && "md:grid-cols-2"
               )}>
-                {group.sessions.map(session => renderSingleSessionCard(session, group.sessions.length > 1))}
+                {group.sessions.map(session => (
+                  <SessionCard
+                    key={session.id}
+                    variant="user"
+                    session={session}
+                    onClick={onSessionClick}
+                    onShare={onShareSession}
+                    onToggleBookmark={onToggleBookmark}
+                    eventName={event.name}
+                  />
+                ))}
               </div>
             </div>
           ))
