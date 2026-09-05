@@ -23,6 +23,13 @@ function cn(...inputs: ClassValue[]) {
 
 const CalendarIcon = ({ className }: { className?: string }) => <Calendar className={className || "w-6 h-6"} />;
 const DashboardIcon = ({ className }: { className?: string }) => <LayoutDashboard className={className || "w-6 h-6"} />;
+const EyeIcon = ({ className }: { className?: string }) => <Eye className={className || "w-5 h-5 shrink-0"} />;
+const PlusIcon = ({ className }: { className?: string }) => <Plus className={className || "w-4 h-4"} />;
+const SparklesIcon = ({ className }: { className?: string }) => <Sparkles className={className || "w-3 h-3"} />;
+const ArchiveIcon = ({ className }: { className?: string }) => <Archive className={className || "w-3.5 h-3.5 shrink-0"} />;
+const HistoryIcon = ({ className }: { className?: string }) => <History className={className || "w-3 h-3"} />;
+const LogOutIcon = ({ className }: { className?: string }) => <LogOut className={className || "w-5 h-5"} />;
+const BookmarkIcon = ({ className }: { className?: string }) => <Bookmark className={className || "w-5 h-5"} />;
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -82,7 +89,7 @@ export const Layout: React.FC<LayoutProps> = ({
             className="p-2 hover:bg-white/10 active:scale-95 rounded-full transition-transform cursor-pointer"
             aria-label="Logout"
           >
-            <LogOut className="w-5 h-5 text-on-primary" />
+            <LogOutIcon className="w-5 h-5 text-on-primary" />
           </button>
         )}
       </header>
@@ -107,7 +114,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Eye className="w-5 h-5 shrink-0" />
+                  <EyeIcon className="w-5 h-5 shrink-0" />
                   <span>User View</span>
                 </div>
                 <span className={cn(
@@ -122,7 +129,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 {/* Active / Upcoming Events */}
                 <div>
                   <p className="px-4 text-[10px] font-extrabold text-primary uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3" />
+                    <SparklesIcon className="w-3 h-3" />
                     <span>Active Events</span>
                   </p>
 
@@ -154,7 +161,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 {pastEvents.length > 0 && (
                   <div>
                     <p className="px-4 text-[10px] font-extrabold text-on-surface-variant/70 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                      <History className="w-3 h-3" />
+                      <HistoryIcon className="w-3 h-3" />
                       <span>Past Events Archive</span>
                     </p>
 
@@ -174,7 +181,7 @@ export const Layout: React.FC<LayoutProps> = ({
                                 : "text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface"
                             )}
                           >
-                            <Archive className={cn("w-3.5 h-3.5 shrink-0", isEventActive ? "text-primary" : "text-on-surface-variant")} />
+                            <ArchiveIcon className={cn("w-3.5 h-3.5 shrink-0", isEventActive ? "text-primary" : "text-on-surface-variant")} />
                             <span className="truncate">{evt.name}</span>
                           </button>
                         );
@@ -188,7 +195,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     onClick={onAddEvent}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-all text-left cursor-pointer mt-2 border border-dashed border-primary/30"
                   >
-                    <Plus className="w-4 h-4" />
+                    <PlusIcon className="w-4 h-4" />
                     <span>+ Add New Event</span>
                   </button>
                 )}
@@ -219,7 +226,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 )}
               >
                 <div className="flex items-center gap-4">
-                  <Bookmark className="w-5 h-5" />
+                  <BookmarkIcon className="w-5 h-5" />
                   <span>My Saved Agenda</span>
                 </div>
                 {bookmarkedCount > 0 && (

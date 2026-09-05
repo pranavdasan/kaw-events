@@ -12,26 +12,17 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface AdminDashboardViewProps {
-  events: Event[];
-  sessions: Session[];
-  selectedEventId?: string | null;
-  onSelectEvent?: (eventId: string) => void;
-  isAutoLiveMode?: boolean;
-  onResetAutoLive?: () => void;
-  onToggleLive: (sessionId: string) => void;
-  onEditSession: (sessionId: string) => void;
-  onAddEvent: () => void;
-  onAddSession?: (eventId: string) => void;
-  onEditEvent: (eventId: string) => void;
-  onDeleteEvent?: (eventId: string) => void;
-  onDeleteSession?: (sessionId: string) => void;
-  onReorderSessions: (sessions: Session[]) => void;
-  onQuickAdd: (title: string, duration: number) => void;
-  hasPendingChanges?: boolean;
-  onPublishChanges?: () => void;
-  onDiscardChanges?: () => void;
-}
+const PlusIcon = ({ className }: { className?: string }) => <Plus className={className || "w-4 h-4"} />;
+const EditIcon = ({ className }: { className?: string }) => <Edit className={className || "w-4 h-4"} />;
+const RotateCcwIcon = ({ className }: { className?: string }) => <RotateCcw className={className || "w-4 h-4 transition-transform duration-300"} />;
+const ZapIcon = ({ className }: { className?: string }) => <Zap className={className || "w-5 h-5"} />;
+const SlidersIcon = ({ className }: { className?: string }) => <Sliders className={className || "w-5 h-5"} />;
+const ChevronDownIcon = ({ className }: { className?: string }) => <ChevronDown className={className || "w-4 h-4 text-primary shrink-0 transition-transform duration-200"} />;
+const CheckIcon = ({ className }: { className?: string }) => <Check className={className || "w-4 h-4 shrink-0 ml-2"} />;
+const CalendarIcon = ({ className }: { className?: string }) => <Calendar className={className || "w-4 h-4 shrink-0"} />;
+const Trash2Icon = ({ className }: { className?: string }) => <Trash2 className={className || "w-4 h-4"} />;
+const XIcon = ({ className }: { className?: string }) => <X className={className || "w-5 h-5"} />;
+
 
 /**
  * Admin portal dashboard for managing programs, events, and live states.
@@ -145,7 +136,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps hover:bg-surface-variant transition-all shadow-md relative z-10 group"
                       title="Discard pending changes"
                     >
-                      <RotateCcw className="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" />
+                      <RotateCcwIcon className="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" />
                       <span>Revert Changes</span>
                     </button>
                   )}
@@ -154,7 +145,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     className="p-1.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface-variant transition-colors cursor-pointer"
                     title="Edit Event Details"
                   >
-                    <Edit className="w-4 h-4" />
+                    <EditIcon className="w-4 h-4" />
                   </button>
                   {onDeleteEvent && (
                     <button 
@@ -162,7 +153,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       className="p-1.5 rounded-xl bg-error/10 hover:bg-error/20 text-error transition-colors cursor-pointer"
                       title="Delete Event"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2Icon className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -179,7 +170,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               >
                 <div className="flex items-center gap-2.5 truncate">
                   <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                    <Calendar className="w-4 h-4 shrink-0" />
+                    <CalendarIcon className="w-4 h-4 shrink-0" />
                   </div>
                   <div className="text-left truncate">
                     <span className="block text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant/70 -mb-0.5">
@@ -225,7 +216,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   )}
                                 >
                                   <span className="truncate">{e.name}</span>
-                                  {isSelected ? <Check className="w-4 h-4 shrink-0 ml-2" /> : null}
+                                  {isSelected ? <CheckIcon className="w-4 h-4 shrink-0 ml-2" /> : null}
                                 </button>
                               );
                             })}
@@ -249,7 +240,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   )}
                                 >
                                   <span className="truncate">{e.name}</span>
-                                  {isSelected ? <Check className="w-4 h-4 shrink-0 ml-2" /> : null}
+                                  {isSelected ? <CheckIcon className="w-4 h-4 shrink-0 ml-2" /> : null}
                                 </button>
                               );
                             })}
@@ -321,7 +312,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               onClick={onResetAutoLive}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary font-bold text-xs shadow-sm hover:opacity-90 transition-all shrink-0 cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcwIcon className="w-3.5 h-3.5" />
               <span>Reset to Automatic Mode</span>
             </button>
           )}
@@ -373,11 +364,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         <option value="custom">Custom...</option>
                       </select>
                     )}
-                    <button 
+<button
                       onClick={handleQuickAdd}
                       className="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-caps whitespace-nowrap hover:opacity-90 transition-all flex items-center gap-2 font-bold"
                     >
-                      <Plus className="w-4 h-4" /> Add
+                      <PlusIcon className="w-4 h-4" /> Add
                     </button>
                   </div>
                 </div>
@@ -424,7 +415,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               className="p-2 rounded-full hover:bg-surface-container-high transition-colors"
               aria-label="Close"
             >
-              <X className="w-5 h-5" />
+              <XIcon className="w-5 h-5" />
             </button>
           </div>
           
@@ -510,7 +501,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary text-on-primary shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
         aria-label="Add Session"
       >
-        <Plus className="w-7 h-7" />
+        <PlusIcon className="w-7 h-7" />
       </motion.button>
     )}
 
@@ -553,7 +544,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-8 py-4 rounded-full bg-primary text-on-primary font-label-caps text-lg font-bold shadow-2xl hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 group"
         aria-label="Publish pending changes"
       >
-        <RotateCcw className="w-6 h-6 transition-transform duration-300 group-hover:rotate-180" />
+        <RotateCcwIcon className="w-6 h-6 transition-transform duration-300 group-hover:rotate-180" />
         <span>Update Event</span>
       </motion.button>
     )}

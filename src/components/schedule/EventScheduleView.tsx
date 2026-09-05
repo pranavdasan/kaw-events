@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, MapPin, Users, ChevronRight } from 'lucide-react';
 import { Event, Session, Track } from '../../types';
 import { useAdaptiveSchedule, AdaptiveSession } from '../../hooks/useAdaptiveSchedule';
 import { clsx, type ClassValue } from 'clsx';
