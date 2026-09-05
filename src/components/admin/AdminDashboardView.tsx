@@ -225,7 +225,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   )}
                                 >
                                   <span className="truncate">{e.name}</span>
-                                  {isSelected && <Check className="w-4 h-4 shrink-0 ml-2" />}
+                                  {isSelected ? <Check className="w-4 h-4 shrink-0 ml-2" /> : null}
                                 </button>
                               );
                             })}
@@ -249,7 +249,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   )}
                                 >
                                   <span className="truncate">{e.name}</span>
-                                  {isSelected && <Check className="w-4 h-4 shrink-0 ml-2" />}
+                                  {isSelected ? <Check className="w-4 h-4 shrink-0 ml-2" /> : null}
                                 </button>
                               );
                             })}
