@@ -169,144 +169,19 @@ function AppInner() {
     });
   };
 
-  // --- Data Mutation Handlers (Firestore) ---
-  const toggleLive = useCallback((sessionId: string) => {
-    setIsAutoLiveMode(false);
-    const targetSession = sessions.find((s) => s.id === sessionId);
-    if (targetSession) {
-      const updated = { ...targetSession, isLive: !targetSession.isLive };
-      updateSession(sessionId, updated).catch(console.error);
-      // Session will be updated via real-time subscription
-    }
-  }, [sessions]);
+  const {
+    toggleLive,
+    handleSaveEvent,
+    handleDeleteEvent,
+    handleSaveSession,
+    handleDeleteSession,
+    handleReorderSessions,
+    handleQuickAddSession,
+  } = useData();
 
   const handleResetAutoLive = useCallback(() => {
     setIsAutoLiveMode(true);
   }, []);
-
-  const handleSaveSession = useCallback(async (updatedSession: Session) => {
-    console.log("handleSaveSession received:", updatedSession);
-    
-    if (updatedSession.isPending || updatedSession.id.startsWith("s-")) {
-      // New session - create in Firestore
-      const { isPending, ...sessionData } = updatedSession;
-      try {
-        const newId = await createSession(sessionData);
-        // Session will be added via real-time subscription
-        if (selectedSessionId === updatedSession.id) {
-          setSelectedSessionId(newId);
-        }
-      } catch (err) {
-        console.error("Failed to create session:", err);
-        alert("Failed to save session. Please try again.");
-        return;
-      }
-    } else {
-      // Existing session - update in Firestore
-      try {
-        await updateSession(updatedSession.id, updatedSession);
-      } catch (err) {
-        console.error("Failed to update session:", err);
-        alert("Failed to save session. Please try again.");
-        return;
-      }
-    }
-    invalidateAdaptiveScheduleCache(updatedSession.eventId);
-    markSessionPending(updatedSession.isPending ? { ...updatedSession, isPending: false } : updatedSession, events, sessions);
-    setCurrentView("admin-dashboard");
-  }, [selectedSessionId, setSelectedSessionId]);
-
-  const handleSaveEvent = useCallback(async (updatedEvent: Event) => {
-    try {
-      if (updatedEvent.id.startsWith("e-")) {
-        // New event
-        const { id, ...eventData } = updatedEvent;
-        const newId = await createEvent(eventData);
-        setSelectedEventId(newId);
-      } else {
-        // Existing event
-        await updateEvent(updatedEvent.id, updatedEvent);
-      }
-      invalidateAdaptiveScheduleCache(updatedEvent.id);
-      markEventPending(updatedEvent, events, sessions);
-      setCurrentView("admin-dashboard");
-    } catch (err) {
-      console.error("Failed to save event:", err);
-      alert("Failed to save event. Please try again.");
-    }
-  }, []);
-
-  const handleDeleteEvent = useCallback(async (eventId: string) => {
-    try {
-      await deleteEvent(eventId);
-      if (selectedEventId === eventId) {
-        setSelectedEventId(events.find((e) => e.id !== eventId)?.id || null);
-      }
-      invalidateAdaptiveScheduleCache(eventId);
-      setCurrentView("admin-dashboard");
-    } catch (err) {
-      console.error("Failed to delete event:", err);
-      alert("Failed to delete event. Please try again.");
-    }
-  }, [events]);
-
-  const handleDeleteSession = useCallback(async (sessionId: string) => {
-    try {
-      const sessionToDelete = sessions.find((s) => s.id === sessionId);
-      await deleteSession(sessionId);
-      if (sessionToDelete) {
-        invalidateAdaptiveScheduleCache(sessionToDelete.eventId);
-      }
-    } catch (err) {
-      console.error("Failed to delete session:", err);
-      alert("Failed to delete session. Please try again.");
-    }
-  }, [sessions]);
-
-  const handleReorderSessions = useCallback(async (reordered: Session[]) => {
-    // Update local state immediately for responsiveness
-    // Session will be updated via real-time subscription
-    // Persist to Firestore
-    try {
-      await reorderSessions(reordered);
-    } catch (err) {
-      console.error("Failed to reorder sessions:", err);
-    }
-    // Mark all reordered sessions as pending
-    reordered.forEach((s) => markSessionPending(s, events, sessions));
-    // Invalidate cache for the affected event
-    if (reordered.length > 0) {
-      invalidateAdaptiveScheduleCache(reordered[0].eventId);
-    }
-  }, []);
-
-  const handleQuickAddSession = useCallback((title: string, duration: number) => {
-    if (!selectedEventId) return;
-
-    const eventDaySessions = sessions.filter((s) => s.eventId === selectedEventId);
-    const maxOrder = eventDaySessions.reduce(
-      (max, s) => Math.max(max, s.order ?? 0),
-      -1,
-    );
-
-    const newSession: Session = {
-      id: createSlug(`${selectedEventId}-${title}`),
-      eventId: selectedEventId,
-      title,
-      description: "Quick added program item.",
-      durationInMin: duration,
-      track: "General",
-      room: "Main Hall",
-      participants: [],
-      isLive: false,
-      type: "break",
-      order: maxOrder + 1,
-    };
-
-    // Session will be added via real-time subscription
-    invalidateAdaptiveScheduleCache(selectedEventId);
-    markSessionPending(newSession, events, sessions);
-  }, [selectedEventId, sessions]);
 
   const addEvent = useCallback(() => {
     const defaultName = "KAW Cultural Gathering";
