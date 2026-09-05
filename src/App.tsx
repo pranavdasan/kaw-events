@@ -8,12 +8,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { Session, Event, Participant } from "./types";
 import { useAdaptiveSchedule, invalidateAdaptiveScheduleCache } from "./hooks/useAdaptiveSchedule";
 import { ONAM_POOKALAM_BASE64, createSlug } from "./utils/imageUtils";
-import { onAuthStateChanged, signOut, User, getIdTokenResult } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import {
-  subscribeToEvents,
-  subscribeToSessions,
-  subscribeToPerformersByEvent,
   createEvent,
   updateEvent,
   deleteEvent,
@@ -27,6 +24,12 @@ import {
   addBookmark,
   removeBookmark,
 } from "./services/firestore";
+
+// Import Providers
+import { AuthProvider, useAuth } from "./providers/AuthProvider";
+import { DataProvider, useData } from "./providers/DataProvider";
+import { PendingChangesProvider, usePendingChanges } from "./providers/PendingChangesProvider";
+import { ViewProvider, useView } from "./providers/ViewProvider";
 
 // Import Components
 import { Layout } from "./components/common/Layout";
@@ -42,388 +45,88 @@ import { AdminEditView } from "./components/admin/AdminEditView";
 import { EventEditView } from "./components/admin/EventEditView";
 
 /**
- * Main Application Component
- * Manages global state using Firestore real-time listeners.
- * Data syncs across devices and persists to backend.
+ * Inner App Component - uses providers via hooks
  */
-export default function App() {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [currentView, setCurrentView] = useState<
-    | "events"
-    | "schedule"
-    | "bookmarks"
-    | "admin-dashboard"
-    | "session-details"
-    | "admin-edit"
-    | "admin-event-edit"
-    | "admin-login"
-  >("events");
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [authUser, setAuthUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+function AppInner() {
+  const { authUser, isAdmin, authLoading, signOut: handleSignOut } = useAuth();
+  const { 
+    events, 
+    sessions, 
+    performers, 
+    selectedEventId, 
+    setSelectedEventId, 
+    isAutoLiveMode, 
+    setIsAutoLiveMode 
+  } = useData();
+  const { 
+    currentView, 
+    setCurrentView, 
+    selectedSessionId, 
+    setSelectedSessionId,
+    navigateToSession,
+    navigateToEditSession,
+    navigateToAddSession,
+    navigateToEditEvent,
+    handleEventSelect,
+    initializeFromUrl
+  } = useView();
+  const {
+    pendingEvents,
+    pendingSessions,
+    hasPendingChanges,
+    originalEvents,
+    originalSessions,
+    markEventPending,
+    markSessionPending,
+    clearPendingChanges,
+    publishPendingChanges,
+  } = usePendingChanges();
 
-  // Firestore data state
-  const [events, setEvents] = useState<Event[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [performers, setPerformers] = useState<Participant[]>([]);
-  const [isAutoLiveMode, setIsAutoLiveMode] = useState<boolean>(true);
-
-  // Pending changes for "Update Event" feature
-  const [pendingEvents, setPendingEvents] = useState<Map<string, Event>>(new Map());
-  const [pendingSessions, setPendingSessions] = useState<Map<string, Session>>(new Map());
-  const [hasPendingChanges, setHasPendingChanges] = useState(false);
-
-  // Store original state for revert functionality
-  const [originalEvents, setOriginalEvents] = useState<Event[] | null>(null);
-  const [originalSessions, setOriginalSessions] = useState<Session[] | null>(null);
-
-  // Bookmarks & Share State
   const [bookmarkedSessionIds, setBookmarkedSessionIds] = useState<string[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
   const [shareModalData, setShareModalData] = useState<{
     isOpen: boolean;
     session?: Session;
     eventName?: string;
+    url?: string;
   }>({ isOpen: false });
 
-  // Track subscriptions for cleanup
-  const subscriptionsRef = useRef<Array<() => void>>([]);
-
-  // --- Auth State Listener ---
+  // Load user bookmarks when auth changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setAuthUser(user);
-      setAuthLoading(false);
-
-      if (user) {
-        // Check custom claims for admin status
-        try {
-          const tokenResult = await getIdTokenResult(user, true);
-          setIsAdmin(tokenResult.claims.admin === true);
-        } catch {
-          setIsAdmin(false);
-        }
-
-        // Load user bookmarks
-        try {
-          const bookmarks = await getBookmarks(user.uid);
-          setBookmarkedSessionIds(bookmarks);
-        } catch (err) {
-          console.error("Failed to load bookmarks:", err);
-        } finally {
-          setBookmarksLoading(false);
-        }
-      } else {
-        setIsAdmin(false);
-        setBookmarkedSessionIds([]);
+    if (authUser) {
+      getBookmarks(authUser.uid).then((bookmarks) => {
+        setBookmarkedSessionIds(bookmarks);
+      }).catch((err) => {
+        console.error("Failed to load bookmarks:", err);
+      }).finally(() => {
         setBookmarksLoading(false);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      // Cleanup all Firestore subscriptions
-      subscriptionsRef.current.forEach((unsub) => unsub());
-      subscriptionsRef.current = [];
-    };
-  }, []);
-
-  // --- Parallel Firestore Subscriptions ---
-  useEffect(() => {
-    // Subscribe to events
-    const unsubEvents = subscribeToEvents((firestoreEvents) => {
-      setEvents(firestoreEvents);
-      // Auto-select first event if none selected
-      if (!selectedEventId && firestoreEvents.length > 0) {
-        setSelectedEventId(firestoreEvents[0].id);
-      }
-    });
-    subscriptionsRef.current.push(unsubEvents);
-
-    // Subscribe to sessions for selected event
-    let unsubSessions: (() => void) | null = null;
-    if (selectedEventId) {
-      unsubSessions = subscribeToSessions(selectedEventId, (firestoreSessions) => {
-        setSessions(firestoreSessions);
       });
-      subscriptionsRef.current.push(unsubSessions);
-    }
-
-    // Subscribe to performers for selected event
-    let unsubPerformers: (() => void) | null = null;
-    if (selectedEventId) {
-      unsubPerformers = subscribeToPerformersByEvent(selectedEventId, (firestorePerformers) => {
-        setPerformers(firestorePerformers);
-      });
-      subscriptionsRef.current.push(unsubPerformers);
-    }
-
-    return () => {
-      if (unsubSessions) unsubSessions();
-      if (unsubPerformers) unsubPerformers();
-    };
-  }, [selectedEventId]);
-
-  // --- Pending Changes Helpers ---
-  const markEventPending = (event: Event) => {
-    if (pendingEvents.size === 0 && pendingSessions.size === 0) {
-      setOriginalEvents(events);
-      setOriginalSessions(sessions);
-    }
-    setPendingEvents((prev) => new Map(prev).set(event.id, event));
-    setHasPendingChanges(true);
-  };
-
-  const markSessionPending = (session: Session) => {
-    if (pendingEvents.size === 0 && pendingSessions.size === 0) {
-      setOriginalEvents(events);
-      setOriginalSessions(sessions);
-    }
-    setPendingSessions((prev) => new Map(prev).set(session.id, session));
-    setHasPendingChanges(true);
-  };
-
-  const clearPendingChanges = () => {
-    if (originalEvents) setEvents(originalEvents);
-    if (originalSessions) setSessions(originalSessions);
-    setPendingEvents(new Map());
-    setPendingSessions(new Map());
-    setHasPendingChanges(false);
-    setOriginalEvents(null);
-    setOriginalSessions(null);
-  };
-
-  const publishPendingChanges = async () => {
-    try {
-      await firestorePublishPendingChanges(
-        Array.from(pendingEvents.values()),
-        Array.from(pendingSessions.values())
-      );
-      clearPendingChanges();
-    } catch (err) {
-      console.error("Failed to publish changes:", err);
-      alert("Failed to publish changes. Please try again.");
-    }
-  };
-
-  // --- Navigation Handlers ---
-  const navigateToSession = (id: string) => {
-    const sessionObj = sessions.find((s) => s.id === id);
-    if (sessionObj) {
-      setSelectedSessionId(id);
-      if (!selectedEventId) {
-        setSelectedEventId(sessionObj.eventId);
-      }
-      setCurrentView("session-details");
-    }
-  };
-
-  const navigateToEditSession = (id: string) => {
-    setSelectedSessionId(id);
-    setCurrentView("admin-edit");
-  };
-
-  const navigateToAddSession = (eventId: string) => {
-    const tempId = `s-${Date.now()}`;
-    const newSession: Session = {
-      id: tempId,
-      eventId,
-      title: "",
-      description: "",
-      durationInMin: 15,
-      track: "General",
-      room: "Main Hall",
-      participants: [],
-      isLive: false,
-      type: "session",
-      order: 0,
-      isPending: true,
-    };
-    setSelectedSessionId(tempId);
-    setCurrentView("admin-edit");
-    setSessions((prev) => [...prev, newSession]);
-  };
-
-  const navigateToEditEvent = (id: string) => {
-    setSelectedEventId(id);
-    setCurrentView("admin-event-edit");
-  };
-
-  const handleEventSelect = (id: string) => {
-    setSelectedEventId(id);
-    setCurrentView("schedule");
-  };
-
-  // --- Data Mutation Handlers (Firestore) ---
-  const toggleLive = (sessionId: string) => {
-    setIsAutoLiveMode(false);
-    const targetSession = sessions.find((s) => s.id === sessionId);
-    if (targetSession) {
-      const updated = { ...targetSession, isLive: !targetSession.isLive };
-      updateSession(sessionId, updated).catch(console.error);
-      setSessions((prev) => prev.map((s) => (s.id === sessionId ? updated : s)));
-    }
-  };
-
-  const handleResetAutoLive = () => {
-    setIsAutoLiveMode(true);
-  };
-
-  const handleSaveSession = async (updatedSession: Session) => {
-    console.log("handleSaveSession received:", updatedSession);
-    
-    if (updatedSession.isPending || updatedSession.id.startsWith("s-")) {
-      // New session - create in Firestore
-      const { isPending, ...sessionData } = updatedSession;
-      try {
-        const newId = await createSession(sessionData);
-        setSessions((prev) =>
-          prev.map((s) => (s.id === updatedSession.id ? { ...sessionData, id: newId } : s))
-        );
-        if (selectedSessionId === updatedSession.id) {
-          setSelectedSessionId(newId);
-        }
-      } catch (err) {
-        console.error("Failed to create session:", err);
-        alert("Failed to save session. Please try again.");
-        return;
-      }
     } else {
-      // Existing session - update in Firestore
-      try {
-        await updateSession(updatedSession.id, updatedSession);
-        setSessions((prev) =>
-          prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
-        );
-      } catch (err) {
-        console.error("Failed to update session:", err);
-        alert("Failed to save session. Please try again.");
-        return;
-      }
+      setBookmarkedSessionIds([]);
+      setBookmarksLoading(false);
     }
-    invalidateAdaptiveScheduleCache(updatedSession.eventId);
-    markSessionPending(updatedSession.isPending ? { ...updatedSession, isPending: false } : updatedSession);
-    setCurrentView("admin-dashboard");
-  };
+  }, [authUser]);
 
-  const handleSaveEvent = async (updatedEvent: Event) => {
-    try {
-      if (updatedEvent.id.startsWith("e-")) {
-        // New event
-        const { id, ...eventData } = updatedEvent;
-        const newId = await createEvent(eventData);
-        setEvents((prev) => [...prev, { ...eventData, id: newId }]);
-        setSelectedEventId(newId);
+  // Initialize from URL on mount
+  useEffect(() => {
+    initializeFromUrl();
+  }, [initializeFromUrl]);
+
+  // Handle sessionId from URL after sessions are loaded
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session');
+    
+    if (sessionId) {
+      const sessionObj = sessions.find(s => s.id === sessionId);
+      if (sessionObj) {
+        navigateToSession(sessionId);
       } else {
-        // Existing event
-        await updateEvent(updatedEvent.id, updatedEvent);
-        setEvents((prev) => prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)));
+        // Session not found in current event's sessions -> fallback to schedule
+        setCurrentView('schedule');
       }
-      invalidateAdaptiveScheduleCache(updatedEvent.id);
-      markEventPending(updatedEvent);
-      setCurrentView("admin-dashboard");
-    } catch (err) {
-      console.error("Failed to save event:", err);
-      alert("Failed to save event. Please try again.");
     }
-  };
-
-  const handleDeleteEvent = async (eventId: string) => {
-    try {
-      await deleteEvent(eventId);
-      setEvents((prev) => prev.filter((e) => e.id !== eventId));
-      setSessions((prev) => prev.filter((s) => s.eventId !== eventId));
-      if (selectedEventId === eventId) {
-        setSelectedEventId(events.find((e) => e.id !== eventId)?.id || null);
-      }
-      invalidateAdaptiveScheduleCache(eventId);
-      setCurrentView("admin-dashboard");
-    } catch (err) {
-      console.error("Failed to delete event:", err);
-      alert("Failed to delete event. Please try again.");
-    }
-  };
-
-  const handleDeleteSession = async (sessionId: string) => {
-    try {
-      const sessionToDelete = sessions.find((s) => s.id === sessionId);
-      await deleteSession(sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      if (sessionToDelete) {
-        invalidateAdaptiveScheduleCache(sessionToDelete.eventId);
-      }
-    } catch (err) {
-      console.error("Failed to delete session:", err);
-      alert("Failed to delete session. Please try again.");
-    }
-  };
-
-  const handleReorderSessions = async (reordered: Session[]) => {
-    // Update local state immediately for responsiveness
-    setSessions((prev) => {
-      const otherSessions = prev.filter(
-        (s) => !reordered.some((r) => r.id === s.id),
-      );
-      return [...otherSessions, ...reordered];
-    });
-    // Persist to Firestore
-    try {
-      await reorderSessions(reordered);
-    } catch (err) {
-      console.error("Failed to reorder sessions:", err);
-    }
-    // Mark all reordered sessions as pending
-    reordered.forEach((s) => markSessionPending(s));
-    // Invalidate cache for the affected event
-    if (reordered.length > 0) {
-      invalidateAdaptiveScheduleCache(reordered[0].eventId);
-    }
-  };
-
-  const handleQuickAddSession = (title: string, duration: number) => {
-    if (!selectedEventId) return;
-
-    const eventDaySessions = sessions.filter((s) => s.eventId === selectedEventId);
-    const maxOrder = eventDaySessions.reduce(
-      (max, s) => Math.max(max, s.order ?? 0),
-      -1,
-    );
-
-    const newSession: Session = {
-      id: createSlug(`${selectedEventId}-${title}`),
-      eventId: selectedEventId,
-      title,
-      description: "Quick added program item.",
-      durationInMin: duration,
-      track: "General",
-      room: "Main Hall",
-      participants: [],
-      isLive: false,
-      type: "break",
-      order: maxOrder + 1,
-    };
-
-    setSessions((prev) => [...prev, newSession]);
-    invalidateAdaptiveScheduleCache(selectedEventId);
-    markSessionPending(newSession);
-  };
-
-  const addEvent = () => {
-    const defaultName = "KAW Cultural Gathering";
-    const newEvent: Event = {
-      id: createSlug(defaultName),
-      name: defaultName,
-      description: "A newly created event for KAW Events.",
-      date: new Date().toISOString().split("T")[0],
-      startTime: "09:00",
-      endTime: "17:00",
-      imageUrl: ONAM_POOKALAM_BASE64,
-    };
-    setEvents((prev) => [...prev, newEvent]);
-    setSelectedEventId(newEvent.id);
-    setCurrentView("admin-event-edit");
-  };
+  }, [sessions, navigateToSession, setCurrentView]);
 
   // --- Bookmark Handlers (Firestore) ---
   const toggleBookmark = useCallback(async (sessionId: string) => {
@@ -451,9 +154,10 @@ export default function App() {
       
       return newBookmarks;
     });
-  }, [authUser]);
+  }, [authUser, sessions]);
 
   const handleOpenShare = (session: Session, eventName?: string) => {
+    const shareUrl = `${window.location.origin}?event=${session.eventId}&session=${session.id}`;
     const parentEvent = eventName
       ? null
       : events.find((e) => e.id === session.eventId);
@@ -461,20 +165,164 @@ export default function App() {
       isOpen: true,
       session,
       eventName: eventName || parentEvent?.name || "KAW Events",
+      url: shareUrl
     });
   };
 
-  // --- Handle Deep Links ---
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("session");
-    if (sessionId) {
-      const sessionObj = sessions.find((s) => s.id === sessionId);
-      if (sessionObj) {
-        navigateToSession(sessionId);
-      }
+  // --- Data Mutation Handlers (Firestore) ---
+  const toggleLive = useCallback((sessionId: string) => {
+    setIsAutoLiveMode(false);
+    const targetSession = sessions.find((s) => s.id === sessionId);
+    if (targetSession) {
+      const updated = { ...targetSession, isLive: !targetSession.isLive };
+      updateSession(sessionId, updated).catch(console.error);
+      // Session will be updated via real-time subscription
     }
   }, [sessions]);
+
+  const handleResetAutoLive = useCallback(() => {
+    setIsAutoLiveMode(true);
+  }, []);
+
+  const handleSaveSession = useCallback(async (updatedSession: Session) => {
+    console.log("handleSaveSession received:", updatedSession);
+    
+    if (updatedSession.isPending || updatedSession.id.startsWith("s-")) {
+      // New session - create in Firestore
+      const { isPending, ...sessionData } = updatedSession;
+      try {
+        const newId = await createSession(sessionData);
+        // Session will be added via real-time subscription
+        if (selectedSessionId === updatedSession.id) {
+          setSelectedSessionId(newId);
+        }
+      } catch (err) {
+        console.error("Failed to create session:", err);
+        alert("Failed to save session. Please try again.");
+        return;
+      }
+    } else {
+      // Existing session - update in Firestore
+      try {
+        await updateSession(updatedSession.id, updatedSession);
+      } catch (err) {
+        console.error("Failed to update session:", err);
+        alert("Failed to save session. Please try again.");
+        return;
+      }
+    }
+    invalidateAdaptiveScheduleCache(updatedSession.eventId);
+    markSessionPending(updatedSession.isPending ? { ...updatedSession, isPending: false } : updatedSession, events, sessions);
+    setCurrentView("admin-dashboard");
+  }, [selectedSessionId, setSelectedSessionId]);
+
+  const handleSaveEvent = useCallback(async (updatedEvent: Event) => {
+    try {
+      if (updatedEvent.id.startsWith("e-")) {
+        // New event
+        const { id, ...eventData } = updatedEvent;
+        const newId = await createEvent(eventData);
+        setSelectedEventId(newId);
+      } else {
+        // Existing event
+        await updateEvent(updatedEvent.id, updatedEvent);
+      }
+      invalidateAdaptiveScheduleCache(updatedEvent.id);
+      markEventPending(updatedEvent, events, sessions);
+      setCurrentView("admin-dashboard");
+    } catch (err) {
+      console.error("Failed to save event:", err);
+      alert("Failed to save event. Please try again.");
+    }
+  }, []);
+
+  const handleDeleteEvent = useCallback(async (eventId: string) => {
+    try {
+      await deleteEvent(eventId);
+      if (selectedEventId === eventId) {
+        setSelectedEventId(events.find((e) => e.id !== eventId)?.id || null);
+      }
+      invalidateAdaptiveScheduleCache(eventId);
+      setCurrentView("admin-dashboard");
+    } catch (err) {
+      console.error("Failed to delete event:", err);
+      alert("Failed to delete event. Please try again.");
+    }
+  }, [events]);
+
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    try {
+      const sessionToDelete = sessions.find((s) => s.id === sessionId);
+      await deleteSession(sessionId);
+      if (sessionToDelete) {
+        invalidateAdaptiveScheduleCache(sessionToDelete.eventId);
+      }
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+      alert("Failed to delete session. Please try again.");
+    }
+  }, [sessions]);
+
+  const handleReorderSessions = useCallback(async (reordered: Session[]) => {
+    // Update local state immediately for responsiveness
+    // Session will be updated via real-time subscription
+    // Persist to Firestore
+    try {
+      await reorderSessions(reordered);
+    } catch (err) {
+      console.error("Failed to reorder sessions:", err);
+    }
+    // Mark all reordered sessions as pending
+    reordered.forEach((s) => markSessionPending(s, events, sessions));
+    // Invalidate cache for the affected event
+    if (reordered.length > 0) {
+      invalidateAdaptiveScheduleCache(reordered[0].eventId);
+    }
+  }, []);
+
+  const handleQuickAddSession = useCallback((title: string, duration: number) => {
+    if (!selectedEventId) return;
+
+    const eventDaySessions = sessions.filter((s) => s.eventId === selectedEventId);
+    const maxOrder = eventDaySessions.reduce(
+      (max, s) => Math.max(max, s.order ?? 0),
+      -1,
+    );
+
+    const newSession: Session = {
+      id: createSlug(`${selectedEventId}-${title}`),
+      eventId: selectedEventId,
+      title,
+      description: "Quick added program item.",
+      durationInMin: duration,
+      track: "General",
+      room: "Main Hall",
+      participants: [],
+      isLive: false,
+      type: "break",
+      order: maxOrder + 1,
+    };
+
+    // Session will be added via real-time subscription
+    invalidateAdaptiveScheduleCache(selectedEventId);
+    markSessionPending(newSession, events, sessions);
+  }, [selectedEventId, sessions]);
+
+  const addEvent = useCallback(() => {
+    const defaultName = "KAW Cultural Gathering";
+    const newEvent: Event = {
+      id: createSlug(defaultName),
+      name: defaultName,
+      description: "A newly created event for KAW Events.",
+      date: new Date().toISOString().split("T")[0],
+      startTime: "09:00",
+      endTime: "17:00",
+      imageUrl: ONAM_POOKALAM_BASE64,
+    };
+    // Event will be added via real-time subscription
+    setSelectedEventId(newEvent.id);
+    setCurrentView("admin-event-edit");
+  }, []);
 
   // --- Memos & Derived State ---
   const currentEvent = useMemo(
@@ -557,8 +405,7 @@ export default function App() {
         isAdmin={isAdmin}
         bookmarkedCount={bookmarkedSessionIds.length}
         onLogout={async () => {
-          await signOut(auth);
-          setIsAdmin(false);
+          await handleSignOut();
           setCurrentView("events");
         }}
         events={events}
@@ -582,7 +429,6 @@ export default function App() {
             >
               <AdminLoginView
                 onLogin={(user) => {
-                  setIsAdmin(true);
                   setCurrentView("admin-dashboard");
                 }}
               />
@@ -709,7 +555,7 @@ export default function App() {
                 onSave={handleSaveSession}
                 onCreateParticipant={async (p) => {
                   const newId = await createPerformer(p);
-                  setPerformers((prev) => [...prev, { ...p, id: newId }]);
+                  // Performer will be added via real-time subscription
                 }}
               />
             </motion.div>
@@ -740,9 +586,27 @@ export default function App() {
           onClose={() => setShareModalData({ isOpen: false })}
           title={shareModalData.session.title}
           subtitle={`${shareModalData.eventName} • ${shareModalData.session.track} Track`}
-          url={window.location.origin + "?session=" + shareModalData.session.id}
+          url={shareModalData.url}
         />
       )}
     </>
+  );
+}
+
+/**
+ * Main Application Component
+ * Uses provider pattern for state management
+ */
+export default function App() {
+  return (
+    <AuthProvider>
+      <DataProvider>
+        <PendingChangesProvider>
+          <ViewProvider>
+            <AppInner />
+          </ViewProvider>
+        </PendingChangesProvider>
+      </DataProvider>
+    </AuthProvider>
   );
 }
