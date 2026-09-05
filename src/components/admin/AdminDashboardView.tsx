@@ -118,7 +118,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   };
 
   const dayStartTime = event?.startTime || '09:00';
-  const adaptiveSessions = useAdaptiveSchedule(orderedSessions, dayStartTime, isAutoLiveMode);
+  const adaptiveSessions = useAdaptiveSchedule(orderedSessions, dayStartTime, isAutoLiveMode, event?.id || 'default');
 
   const liveSessionsCount = useMemo(() => adaptiveSessions.filter(s => s.isLive).length, [adaptiveSessions]);
 

@@ -6,7 +6,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Session, Event, Participant } from "./types";
-import { useAdaptiveSchedule } from "./hooks/useAdaptiveSchedule";
+import { useAdaptiveSchedule, invalidateAdaptiveScheduleCache } from "./hooks/useAdaptiveSchedule";
 import { ONAM_POOKALAM_BASE64, createSlug } from "./utils/imageUtils";
 import { onAuthStateChanged, signOut, User, getIdTokenResult } from "firebase/auth";
 import { auth } from "./firebase";
@@ -306,6 +306,7 @@ export default function App() {
         return;
       }
     }
+    invalidateAdaptiveScheduleCache(updatedSession.eventId);
     markSessionPending(updatedSession.isPending ? { ...updatedSession, isPending: false } : updatedSession);
     setCurrentView("admin-dashboard");
   };
@@ -323,6 +324,7 @@ export default function App() {
         await updateEvent(updatedEvent.id, updatedEvent);
         setEvents((prev) => prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)));
       }
+      invalidateAdaptiveScheduleCache(updatedEvent.id);
       markEventPending(updatedEvent);
       setCurrentView("admin-dashboard");
     } catch (err) {
@@ -339,6 +341,7 @@ export default function App() {
       if (selectedEventId === eventId) {
         setSelectedEventId(events.find((e) => e.id !== eventId)?.id || null);
       }
+      invalidateAdaptiveScheduleCache(eventId);
       setCurrentView("admin-dashboard");
     } catch (err) {
       console.error("Failed to delete event:", err);
@@ -348,8 +351,12 @@ export default function App() {
 
   const handleDeleteSession = async (sessionId: string) => {
     try {
+      const sessionToDelete = sessions.find((s) => s.id === sessionId);
       await deleteSession(sessionId);
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (sessionToDelete) {
+        invalidateAdaptiveScheduleCache(sessionToDelete.eventId);
+      }
     } catch (err) {
       console.error("Failed to delete session:", err);
       alert("Failed to delete session. Please try again.");
@@ -372,6 +379,10 @@ export default function App() {
     }
     // Mark all reordered sessions as pending
     reordered.forEach((s) => markSessionPending(s));
+    // Invalidate cache for the affected event
+    if (reordered.length > 0) {
+      invalidateAdaptiveScheduleCache(reordered[0].eventId);
+    }
   };
 
   const handleQuickAddSession = (title: string, duration: number) => {
@@ -398,6 +409,7 @@ export default function App() {
     };
 
     setSessions((prev) => [...prev, newSession]);
+    invalidateAdaptiveScheduleCache(selectedEventId);
     markSessionPending(newSession);
   };
 
@@ -489,6 +501,7 @@ export default function App() {
     eventDaySessions,
     dayStartTime,
     isAutoLiveMode,
+    currentEvent?.id || 'default',
   );
 
   const sessionWithTiming = useMemo(
