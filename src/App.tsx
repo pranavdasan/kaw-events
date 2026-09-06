@@ -91,20 +91,16 @@ function AppInner() {
     url?: string;
   }>({ isOpen: false });
 
-  // Load user bookmarks when auth changes
+  // Load user bookmarks in parallel with auth state
   useEffect(() => {
-    if (authUser) {
-      getBookmarks(authUser.uid).then((bookmarks) => {
-        setBookmarkedSessionIds(bookmarks);
-      }).catch((err) => {
-        console.error("Failed to load bookmarks:", err);
-      }).finally(() => {
-        setBookmarksLoading(false);
-      });
-    } else {
-      setBookmarkedSessionIds([]);
+    const bookmarksPromise = authUser
+      ? getBookmarks(authUser.uid)
+      : Promise.resolve();
+
+    Promise.all([bookmarksPromise]).then(([bookmarks]) => {
+      setBookmarkedSessionIds(bookmarks || []);
       setBookmarksLoading(false);
-    }
+    });
   }, [authUser]);
 
   // Initialize from URL on mount
