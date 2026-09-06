@@ -8,6 +8,27 @@ import { twMerge } from 'tailwind-merge';
 import { SessionCard } from '../schedule/SessionCard';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
+interface AdminDashboardViewProps {
+  events: Event[];
+  sessions: Session[];
+  selectedEventId?: string;
+  onSelectEvent?: (id: string) => void;
+  isAutoLiveMode?: boolean;
+  onResetAutoLive?: () => void;
+  onToggleLive?: (sessionId: string) => void;
+  onEditSession?: (id: string) => void;
+  onAddEvent?: () => void;
+  onAddSession?: (eventId: string) => void;
+  onEditEvent?: (id: string) => void;
+  onDeleteEvent?: (id: string) => void;
+  onDeleteSession?: (id: string) => void;
+  onReorderSessions?: (sessions: Session[]) => void;
+  onQuickAdd?: (title: string, duration: number) => void;
+  hasPendingChanges?: boolean;
+  onPublishChanges?: () => void;
+  onDiscardChanges?: () => void;
+}
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

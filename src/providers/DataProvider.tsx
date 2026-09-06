@@ -66,38 +66,42 @@ export function DataProvider({ children }: DataProviderProps) {
 
   const subscriptionsRef = useRef<Array<() => void>>([]);
 
-  // Parallel Firestore subscriptions
+  // Events subscription
   useEffect(() => {
-    const unsubEvents = subscribeToEvents((firestoreEvents) => {
-      setEvents(firestoreEvents);
-      if (!selectedEventId && firestoreEvents.length > 0) {
-        const defaultId = getDefaultEventId(firestoreEvents);
+    const unsubEvents = subscribeToEvents((eventsFromFirestore) => {
+      setEvents(eventsFromFirestore);
+      if (!selectedEventId && eventsFromFirestore.length > 0) {
+        const defaultId = getDefaultEventId(eventsFromFirestore);
         if (defaultId) setSelectedEventId(defaultId);
       }
     });
     subscriptionsRef.current.push(unsubEvents);
-
-    let unsubSessions: (() => void) | null = null;
-    if (selectedEventId) {
-      unsubSessions = subscribeToSessions(selectedEventId, (firestoreSessions) => {
-        setSessions(firestoreSessions);
-      });
-      subscriptionsRef.current.push(unsubSessions);
-    }
-
-    let unsubPerformers: (() => void) | null = null;
-    if (selectedEventId) {
-      unsubPerformers = subscribeToPerformersByEvent(selectedEventId, (firestorePerformers) => {
-        setPerformers(firestorePerformers);
-      });
-      subscriptionsRef.current.push(unsubPerformers);
-    }
-
     return () => {
-      if (unsubSessions) unsubSessions();
-      if (unsubPerformers) unsubPerformers();
-      subscriptionsRef.current.forEach((unsub) => unsub());
-      subscriptionsRef.current = [];
+      unsubEvents();
+    };
+  }, []);
+
+  // Sessions subscription
+  useEffect(() => {
+    if (!selectedEventId) return;
+    const unsubSessions = subscribeToSessions(selectedEventId, (sessionsFromFirestore) => {
+      setSessions(sessionsFromFirestore);
+    });
+    subscriptionsRef.current.push(unsubSessions);
+    return () => {
+      unsubSessions();
+    };
+  }, [selectedEventId]);
+
+  // Performers subscription
+  useEffect(() => {
+    if (!selectedEventId) return;
+    const unsubPerformers = subscribeToPerformersByEvent(selectedEventId, (performersFromFirestore) => {
+      setPerformers(performersFromFirestore);
+    });
+    subscriptionsRef.current.push(unsubPerformers);
+    return () => {
+      unsubPerformers();
     };
   }, [selectedEventId]);
 
