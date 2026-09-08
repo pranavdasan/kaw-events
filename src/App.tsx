@@ -28,6 +28,9 @@ import {
 // Import Providers
 import { AuthProvider, useAuth } from "./providers/AuthProvider";
 import { DataProvider, useData } from "./providers/DataProvider";
+import { useSelection } from "./providers/SelectionContext";
+import { useUIState } from "./providers/UIStateContext";
+import { useActions } from "./providers/ActionsContext";
 
 // Lazy-load admin dashboard view
 const AdminDashboardView = React.lazy(
@@ -56,14 +59,20 @@ function AppInner() {
 const { 
     events, 
     sessions, 
-    performers, 
+    performers 
+} = useData();
+
+const { 
     selectedEventId, 
     setSelectedEventId, 
     selectedSessionId,
-    setSelectedSessionId,
+    setSelectedSessionId 
+} = useSelection();
+
+const { 
     isAutoLiveMode, 
     setIsAutoLiveMode 
-} = useData();
+} = useUIState();
 const { 
     currentView, 
     setCurrentView, 
@@ -169,7 +178,7 @@ const {
     });
   };
 
-  const {
+const {
     toggleLive,
     handleSaveEvent,
     handleDeleteEvent,
@@ -177,7 +186,7 @@ const {
     handleDeleteSession,
     handleReorderSessions,
     handleQuickAddSession,
-  } = useData();
+} = useActions();
 
   const handleResetAutoLive = useCallback(() => {
     setIsAutoLiveMode(true);

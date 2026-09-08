@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
-import { useData } from './DataProvider';
+import { useSelection } from './DataProvider';
 
 type ViewType = 
   | 'events'
@@ -31,7 +31,7 @@ interface ViewProviderProps {
 }
 
 export function ViewProvider({ children }: ViewProviderProps) {
-  const { selectedEventId, setSelectedEventId, selectedSessionId, setSelectedSessionId } = useData();
+  const { selectedEventId, setSelectedEventId, selectedSessionId, setSelectedSessionId } = useSelection();
   const [currentView, setCurrentView] = useState<ViewType>('events');
 
   const navigateToSession = useCallback((id: string) => {
