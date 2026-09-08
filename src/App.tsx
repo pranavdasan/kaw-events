@@ -53,27 +53,27 @@ import { EventEditView } from "./components/admin/EventEditView";
  */
 function AppInner() {
   const { authUser, isAdmin, authLoading, signOut: handleSignOut } = useAuth();
-  const { 
+const { 
     events, 
     sessions, 
     performers, 
     selectedEventId, 
     setSelectedEventId, 
+    selectedSessionId,
+    setSelectedSessionId,
     isAutoLiveMode, 
     setIsAutoLiveMode 
-  } = useData();
-  const { 
+} = useData();
+const { 
     currentView, 
     setCurrentView, 
-    selectedSessionId, 
-    setSelectedSessionId,
     navigateToSession,
     navigateToEditSession,
     navigateToAddSession,
     navigateToEditEvent,
     handleEventSelect,
     initializeFromUrl
-  } = useView();
+} = useView();
   const {
     pendingEvents,
     pendingSessions,

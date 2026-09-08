@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { useData } from './DataProvider';
 
 type ViewType = 
   | 'events'
@@ -14,9 +15,7 @@ interface ViewContextValue {
   currentView: ViewType;
   setCurrentView: (view: ViewType) => void;
   selectedEventId: string | null;
-  setSelectedEventId: (id: string | null) => void;
   selectedSessionId: string | null;
-  setSelectedSessionId: (id: string | null) => void;
   navigateToSession: (id: string) => void;
   navigateToEditSession: (id: string) => void;
   navigateToAddSession: (eventId: string) => void;
@@ -32,9 +31,8 @@ interface ViewProviderProps {
 }
 
 export function ViewProvider({ children }: ViewProviderProps) {
+  const { selectedEventId, setSelectedEventId, selectedSessionId, setSelectedSessionId } = useData();
   const [currentView, setCurrentView] = useState<ViewType>('events');
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const navigateToSession = useCallback((id: string) => {
     setSelectedSessionId(id);
@@ -79,9 +77,7 @@ export function ViewProvider({ children }: ViewProviderProps) {
     currentView,
     setCurrentView,
     selectedEventId,
-    setSelectedEventId,
     selectedSessionId,
-    setSelectedSessionId,
     navigateToSession,
     navigateToEditSession,
     navigateToAddSession,
