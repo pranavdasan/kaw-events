@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef, Suspense } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Session, Event, Participant } from "./types";
 import { useAdaptiveSchedule, invalidateAdaptiveScheduleCache } from "./hooks/useAdaptiveSchedule";
@@ -28,6 +28,11 @@ import {
 // Import Providers
 import { AuthProvider, useAuth } from "./providers/AuthProvider";
 import { DataProvider, useData } from "./providers/DataProvider";
+
+// Lazy-load admin dashboard view
+const AdminDashboardView = React.lazy(
+  () => import("./components/admin/AdminDashboardView").then((mod) => ({ default: mod.AdminDashboardView }))
+);
 import { PendingChangesProvider, usePendingChanges } from "./providers/PendingChangesProvider";
 import { ViewProvider, useView } from "./providers/ViewProvider";
 
@@ -40,7 +45,6 @@ import { EventScheduleView } from "./components/schedule/EventScheduleView";
 import { SessionDetailView } from "./components/schedule/SessionDetailView";
 import { BookmarksListView } from "./components/schedule/BookmarksListView";
 import { ShareModal } from "./components/common/ShareModal";
-import { AdminDashboardView } from "./components/admin/AdminDashboardView";
 import { AdminEditView } from "./components/admin/AdminEditView";
 import { EventEditView } from "./components/admin/EventEditView";
 
@@ -382,12 +386,7 @@ function AppInner() {
           )}
 
           {currentView === "admin-dashboard" && (
-            <motion.div
-              key="admin"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
+            <Suspense fallback={<div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto my-8" />}>
               <AdminDashboardView
                 events={events}
                 sessions={sessions}
@@ -408,7 +407,7 @@ function AppInner() {
                 onPublishChanges={publishPendingChanges}
                 onDiscardChanges={clearPendingChanges}
               />
-            </motion.div>
+            </Suspense>
           )}
 
           {currentView === "admin-edit" && currentSession && (
